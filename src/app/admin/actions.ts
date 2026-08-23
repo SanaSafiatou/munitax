@@ -53,11 +53,18 @@ export async function creerAgent(
   const identifiant = genererIdentifiant(nomComplet, nomMairie(mairieId));
   const codePin = genererCodePin();
 
-  db.prepare(
-    `INSERT INTO agents (nom_complet, telephone, identifiant, mot_de_passe, role,
-                         mairie_id, doit_changer_mdp, actif, cree_le)
-     VALUES (?, ?, ?, ?, 'agent', ?, 1, 1, ?)`,
-  ).run(nomComplet, telephone || null, identifiant, hashSync(codePin, 10), mairieId, Date.now());
+  try {
+    db.prepare(
+      `INSERT INTO agents (nom_complet, telephone, identifiant, mot_de_passe, role,
+                           mairie_id, doit_changer_mdp, actif, cree_le)
+       VALUES (?, ?, ?, ?, 'agent', ?, 1, 1, ?)`,
+    ).run(nomComplet, telephone || null, identifiant, hashSync(codePin, 10), mairieId, Date.now());
+  } catch {
+    return {
+      erreur:
+        "L'enregistrement a échoué. Votre connexion était peut-être périmée : déconnectez-vous, reconnectez-vous, puis réessayez.",
+    };
+  }
 
   revalidatePath("/admin/agents");
   revalidatePath("/super");

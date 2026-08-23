@@ -84,6 +84,34 @@ export async function getSession(): Promise<Session | null> {
     ) {
       return null;
     }
+
+    // Le jeton seul ne suffit pas : le compte doit toujours EXISTER en base.
+    // Après une réinitialisation des données (hébergement gratuit), une
+    // ancienne session pointerait vers un compte fantôme et provoquerait des
+    // erreurs graves (clés étrangères orphelines) : on l'invalide ici, pour
+    // toutes les pages et toutes les actions d'un coup.
+    if (
+      role === "super_admin"
+        ? !db
+            .prepare<[number], { x: number }>(
+              "SELECT 1 AS x FROM super_administrateurs WHERE id = ?",
+            )
+            .get(payload.id)
+        : role === "contribuable"
+          ? !db
+              .prepare<[number], { x: number }>(
+                "SELECT 1 AS x FROM contribuables WHERE id = ? AND actif = 1",
+              )
+              .get(payload.id)
+          : !db
+              .prepare<[number], { x: number }>(
+                "SELECT 1 AS x FROM agents WHERE id = ? AND actif = 1",
+              )
+              .get(payload.id)
+    ) {
+      return null;
+    }
+
     return {
       id: payload.id,
       nom: String(payload.nom ?? ""),
