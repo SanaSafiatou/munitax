@@ -1,15 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import db from "@/lib/db";
 import FormulaireInscription from "@/components/formulaire-inscription";
-import { accueilPourRole, getSession } from "@/lib/auth";
 
 export const metadata = { title: "Créer un compte" };
 
 export default async function PageInscription() {
-  const session = await getSession();
-  if (session) redirect(accueilPourRole(session.role));
-
   const mairies = db
     .prepare<[], { id: number; nom: string }>(
       "SELECT id, nom FROM mairies ORDER BY nom",
@@ -29,7 +24,15 @@ export default async function PageInscription() {
         </div>
 
         <div className="carte p-6 sm:p-8">
-          <FormulaireInscription mairies={mairies} />
+          {mairies.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              Aucune mairie n'est encore active sur la plateforme. Revenez
+              bientôt : les contribuables pourront créer leur compte dès
+              l'ouverture de la première mairie.
+            </p>
+          ) : (
+            <FormulaireInscription mairies={mairies} />
+          )}
         </div>
 
         <p className="mt-5 text-center text-sm text-slate-500">
