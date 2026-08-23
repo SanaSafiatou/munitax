@@ -86,27 +86,9 @@ export default function FormulaireInscriptionMairie() {
             name="contact"
             type="text"
             className="champ w-full"
-            placeholder="+237 …"
+            placeholder="+225 …"
           />
         </div>
-      </div>
-      <div>
-        <label htmlFor="insc-admin" className="etiquette">
-          Nom complet du futur administrateur
-        </label>
-        <input
-          id="insc-admin"
-          name="admin_nom"
-          type="text"
-          required
-          minLength={3}
-          className="champ w-full"
-          placeholder="ex : Sylvain Kouamé"
-        />
-        <p className="mt-1 text-xs text-slate-400">
-          Un compte administrateur sera créé ; ses identifiants s&apos;afficheront
-          une seule fois après l&apos;envoi.
-        </p>
       </div>
 
       <button

@@ -34,15 +34,9 @@ export async function inscrireMairie(
   const nom = String(formData.get("nom") ?? "").trim();
   const responsable = String(formData.get("responsable") ?? "").trim();
   const contact = String(formData.get("contact") ?? "").trim();
-  const adminNom = String(formData.get("admin_nom") ?? "").trim();
 
   if (nom.length < 2) {
     return { erreur: "Veuillez indiquer le nom de la mairie." };
-  }
-  if (adminNom.length < 3) {
-    return {
-      erreur: "Veuillez indiquer le nom complet du futur administrateur.",
-    };
   }
 
   const existe = db
@@ -62,6 +56,9 @@ export async function inscrireMairie(
     .run(nom, responsable || null, contact || null, Date.now());
   const mairieId = Number(mairie.lastInsertRowid);
 
+  // Le formulaire public ne demande plus le nom de l'administrateur : le
+  // compte est généré automatiquement au nom de la mairie.
+  const adminNom = `Administrateur de ${nom}`;
   const identifiant = genererIdentifiant(adminNom, nom);
   const motDePasse = genererMotDePasse();
   db.prepare(
