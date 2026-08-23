@@ -30,9 +30,9 @@ export default async function PageInscription() {
         <div className="carte p-6 sm:p-8">
           {mairies.length === 0 ? (
             <p className="text-sm text-slate-600">
-              Aucune mairie n'est encore active sur la plateforme. Revenez
+              Aucune mairie n&apos;est encore active sur la plateforme. Revenez
               bientôt : les contribuables pourront créer leur compte dès
-              l'ouverture de la première mairie.
+              l&apos;ouverture de la première mairie.
             </p>
           ) : (
             <FormulaireInscription mairies={mairies} />

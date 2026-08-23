@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { connexionSuper, type EtatConnexionSuper } from "@/app/super/actions";
+import ChampMotDePasse from "@/components/champ-mot-de-passe";
 
 export default function FormulaireConnexionSuper() {
   const [etat, action, enCours] = useActionState<EtatConnexionSuper, FormData>(
@@ -29,14 +30,9 @@ export default function FormulaireConnexionSuper() {
         <label htmlFor="super-motdepasse" className="etiquette text-slate-300">
           Mot de passe
         </label>
-        <input
+        <ChampMotDePasse
           id="super-motdepasse"
-          name="mot_de_passe"
-          type="password"
-          required
-          autoComplete="current-password"
           className="champ mt-1 bg-slate-800 text-slate-100 placeholder:text-slate-500"
-          placeholder="••••••••"
         />
       </div>
 

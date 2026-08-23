@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { seConnecter, type EtatConnexion } from "@/app/actions";
+import ChampMotDePasse from "@/components/champ-mot-de-passe";
 
 export default function FormulaireConnexion() {
   const [etat, action, enCours] = useActionState<EtatConnexion, FormData>(
@@ -30,15 +31,7 @@ export default function FormulaireConnexion() {
         <label htmlFor="mot_de_passe" className="etiquette">
           Mot de passe
         </label>
-        <input
-          id="mot_de_passe"
-          name="mot_de_passe"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="champ"
-          placeholder="••••••••"
-        />
+        <ChampMotDePasse id="mot_de_passe" />
       </div>
 
       {etat.erreur && (

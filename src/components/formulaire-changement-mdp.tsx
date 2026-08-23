@@ -6,6 +6,7 @@ import {
   type EtatChangementMdp,
 } from "@/app/actions";
 import { Spinner } from "@/components/formulaire-connexion";
+import ChampMotDePasse from "@/components/champ-mot-de-passe";
 
 export default function FormulaireChangementMdp() {
   const [etat, action, enCours] = useActionState<EtatChangementMdp, FormData>(
@@ -19,28 +20,20 @@ export default function FormulaireChangementMdp() {
         <label htmlFor="nouveau" className="etiquette">
           Nouveau mot de passe (6 caractères minimum)
         </label>
-        <input
+        <ChampMotDePasse
           id="nouveau"
-          name="nouveau"
-          type="password"
-          required
-          minLength={6}
           autoComplete="new-password"
-          className="champ"
+          placeholder="6 caractères minimum"
         />
       </div>
       <div>
         <label htmlFor="confirmation" className="etiquette">
           Confirmer le nouveau mot de passe
         </label>
-        <input
+        <ChampMotDePasse
           id="confirmation"
-          name="confirmation"
-          type="password"
-          required
-          minLength={6}
           autoComplete="new-password"
-          className="champ"
+          placeholder="Répétez le mot de passe"
         />
       </div>
       {etat.erreur && (

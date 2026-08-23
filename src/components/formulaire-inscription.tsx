@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { creerCompteTesteur, type EtatInscription } from "@/app/actions";
 import { Spinner } from "@/components/formulaire-connexion";
+import ChampMotDePasse from "@/components/champ-mot-de-passe";
 
 export default function FormulaireInscription({
   mairies,
@@ -83,14 +84,9 @@ export default function FormulaireInscription({
           <label htmlFor="mot_de_passe" className="etiquette">
             Mot de passe
           </label>
-          <input
+          <ChampMotDePasse
             id="mot_de_passe"
-            name="mot_de_passe"
-            type="password"
-            required
-            minLength={6}
             autoComplete="new-password"
-            className="champ"
             placeholder="6 caractères minimum"
           />
         </div>
@@ -98,13 +94,9 @@ export default function FormulaireInscription({
           <label htmlFor="confirmation" className="etiquette">
             Confirmation
           </label>
-          <input
+          <ChampMotDePasse
             id="confirmation"
-            name="confirmation"
-            type="password"
-            required
             autoComplete="new-password"
-            className="champ"
             placeholder="Répétez le mot de passe"
           />
         </div>
