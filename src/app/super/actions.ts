@@ -5,11 +5,54 @@ import { redirect } from "next/navigation";
 import db from "@/lib/db";
 import {
   creerSession,
+  detruireSession,
   exigerRole,
   nomMairie,
+  verifierProprietaire,
 } from "@/lib/auth";
 import { genererIdentifiant, genererMotDePasse } from "@/lib/comptes";
 import { hashSync } from "bcryptjs";
+
+export type EtatConnexionSuper = { erreur?: string };
+
+/**
+ * Connexion du super-administrateur, exclusivement depuis /super/login.
+ * Action = unique porte d'entrée de l'espace propriétaire : elle n'accepte
+ * que les comptes de la table super_administrateurs et ne partage rien avec
+ * la connexion publique des mairies et contribuables.
+ */
+export async function connexionSuper(
+  _etatPrecedent: EtatConnexionSuper,
+  formData: FormData,
+): Promise<EtatConnexionSuper> {
+  const identifiant = String(formData.get("identifiant") ?? "").trim();
+  const motDePasse = String(formData.get("mot_de_passe") ?? "");
+
+  if (!identifiant || !motDePasse) {
+    return { erreur: "Veuillez saisir votre identifiant et votre mot de passe." };
+  }
+
+  const proprio = await verifierProprietaire(identifiant, motDePasse);
+  if (!proprio) {
+    return { erreur: "Identifiant ou mot de passe incorrect." };
+  }
+
+  await detruireSession();
+  await creerSession({
+    id: proprio.id,
+    nom_complet: proprio.nom_complet,
+    identifiant: proprio.identifiant,
+    role: "super_admin",
+    mairieId: null,
+  });
+  redirect("/super");
+}
+
+/** Déconnexion de l'espace propriétaire → retour à la page dédiée. */
+export async function seDeconnecterSuper(): Promise<void> {
+  await detruireSession();
+  redirect("/super/login");
+}
 
 export type EtatCreationMairie = {
   erreur?: string;

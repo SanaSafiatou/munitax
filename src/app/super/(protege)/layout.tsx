@@ -1,5 +1,6 @@
 import { exigerRole } from "@/lib/auth";
 import NavLaterale from "@/components/nav-laterale";
+import { seDeconnecterSuper } from "../actions";
 
 function icone(chemin: string) {
   return (
@@ -17,7 +18,7 @@ const items = [
   },
 ];
 
-export default async function LayoutSuper({
+export default async function LayoutEspaceProtege({
   children,
 }: LayoutProps<"/super">) {
   const session = await exigerRole("super_admin");
@@ -28,6 +29,7 @@ export default async function LayoutSuper({
         items={items}
         nomUtilisateur={session.nom}
         sousTitre="Propriétaire de l'application"
+        deconnexion={seDeconnecterSuper}
       />
       <div className="border-b border-violet-200 bg-violet-50 px-4 py-1.5 text-center text-xs font-medium text-violet-800">
         Espace propriétaire — gestion des mairies, des abonnements et des accès

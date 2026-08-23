@@ -1,6 +1,7 @@
 import Link from "next/link";
 import db from "@/lib/db";
 import { exigerMairie, nomMairie } from "@/lib/auth";
+import RafraichissementAuto from "@/components/rafraichissement-auto";
 import {
   ajouterJours,
   aujourdhuiStr,
@@ -120,6 +121,7 @@ export default async function PageAdmin() {
 
   return (
     <div className="space-y-6">
+      <RafraichissementAuto secondes={60} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="titre-page">Tableau de bord — mairie de {m}</h1>

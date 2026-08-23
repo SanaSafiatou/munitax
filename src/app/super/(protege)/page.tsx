@@ -4,6 +4,7 @@ import {
   FormulaireCreationAdmin,
   ActionsMairie,
 } from "@/components/formulaires-super";
+import RafraichissementAuto from "@/components/rafraichissement-auto";
 import type { StatutMairie } from "@/lib/db";
 
 export const metadata = { title: "Gestion des mairies" };
@@ -61,6 +62,22 @@ export default function PageSuper() {
 
   return (
     <div className="space-y-6">
+      <RafraichissementAuto secondes={60} />
+      {mairies.some((m) => m.statut === "en_attente") && (
+        <div role="alert" className="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
+          <p className="text-sm font-semibold text-amber-800">
+            ⏳ {mairies.filter((m) => m.statut === "en_attente").length} mairie(s)
+            inscrite(s) en libre-service attend(ent) votre approbation :
+          </p>
+          <p className="mt-1 text-sm text-amber-700">
+            {mairies
+              .filter((m) => m.statut === "en_attente")
+              .map((m) => m.nom)
+              .join(" · ")}{" "}
+            — utilisez le bouton « Approuver » dans le tableau ci-dessous.
+          </p>
+        </div>
+      )}
       <div>
         <h1 className="titre-page">Mairies</h1>
         <p className="sous-titre-page">

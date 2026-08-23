@@ -16,10 +16,13 @@ export default function NavLaterale({
   items,
   nomUtilisateur,
   sousTitre,
+  deconnexion,
 }: {
   items: ElementNav[];
   nomUtilisateur: string;
   sousTitre: string;
+  /** Action de déconnexion personnalisée (ex. espace propriétaire). */
+  deconnexion?: () => Promise<void>;
 }) {
   const chemin = usePathname();
   const [ouvert, setOuvert] = useState(false);
@@ -55,7 +58,7 @@ export default function NavLaterale({
     <div className="border-t border-slate-200 p-4">
       <p className="truncate text-sm font-semibold text-slate-800">{nomUtilisateur}</p>
       <p className="text-xs text-slate-500">{sousTitre}</p>
-      <form action={seDeconnecter} className="mt-3">
+      <form action={deconnexion ?? seDeconnecter} className="mt-3">
         <button type="submit" className="btn-secondaire w-full">
           Se déconnecter
         </button>

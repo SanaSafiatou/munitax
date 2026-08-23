@@ -123,4 +123,23 @@ export type PaiementRow = {
   operateur: string | null;
 };
 
+/**
+ * Suspend automatiquement les mairies actives dont la date d'échéance
+ * d'abonnement est dépassée. Appelée au démarrage du serveur, à chaque
+ * tentative de connexion et à chaque accès à un espace mairie : aucune
+ * action manuelle du super-administrateur n'est nécessaire.
+ */
+export function suspendreMairiesEchues(): number {
+  return db
+    .prepare(
+      `UPDATE mairies SET statut = 'suspendue'
+       WHERE statut = 'active'
+         AND date_echeance_abonnement IS NOT NULL
+         AND date_echeance_abonnement < ?`,
+    )
+    .run(Date.now()).changes;
+}
+
+suspendreMairiesEchues();
+
 export default db;

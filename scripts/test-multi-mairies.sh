@@ -9,15 +9,43 @@ ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
 ko()   { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 verif(){ if [[ "$2" == "$3" ]]; then ok "$1"; else ko "$1 (attendu=$2, obtenu=$3)"; fi; }
 
-ACTION_ID="60ea92d67db1d3c472fc75a52a843c172e34bcf431"
-KEY=$(curl -s $BASE/login | grep -oE '\$ACTION_KEY" value="[^"]+' | head -1 | sed 's/.*value="//')
+# Extraction dynamique de l'identifiant d'action : il change à chaque
+# build, on ne le code donc JAMAIS en dur.
+extraire_action() { # $1 = page, $2 = champ présent dans le formulaire visé
+  local FORM ID N KEY_S
+  FORM=$(curl -s "$1" | awk -v ch="name=\"$2\"" '
+    /<form/{dans=0} /<form/{dans=1} dans{print} dans && /<\/form>/{exit}')
+  ID=$(grep -oE '\$ACTION_[0-9]+:0" value="[^"]+' <<<"$FORM" | head -1 \
+    | sed 's/.*value="//;s/&quot;/"/g' | sed -E 's/.*"id":"([0-9a-f]+)".*/\1/')
+  N=$(grep -oE 'name="\$ACTION_([0-9]+):0"' <<<"$FORM" | head -1 | grep -oE '[0-9]+' | head -1)
+  KEY_S=$(grep -oE '\$ACTION_KEY" value="[^"]+' <<<"$FORM" | head -1 | sed 's/.*value="//')
+  printf '%s\n%s\n%s\n' "$ID" "$N" "$KEY_S"
+}
 
-connexion() {
+connexion() { # $1 identifiant, $2 mot de passe — page publique /login
+  local LIGNES ID N KEY_S
+  LIGNES=$(extraire_action "$BASE/login" "identifiant")
+  ID=$(sed -n 1p <<<"$LIGNES"); N=$(sed -n 2p <<<"$LIGNES"); KEY_S=$(sed -n 3p <<<"$LIGNES")
   curl -s -D - -o /dev/null $BASE/login -X POST \
-    -F '$ACTION_REF_2=' \
-    -F "\$ACTION_2:0={\"id\":\"$ACTION_ID\",\"bound\":\"\$@1\"}" \
-    -F '$ACTION_2:1=[{}]' \
-    -F "\$ACTION_KEY=$KEY" \
+    -F "\$ACTION_REF_${N}=" \
+    -F "\$ACTION_${N}:0={\"id\":\"$ID\",\"bound\":\"\$@1\"}" \
+    -F "\$ACTION_${N}:1=[{}]" \
+    -F "\$ACTION_KEY=$KEY_S" \
+    -F "identifiant=$1" -F "mot_de_passe=$2" \
+    | grep -ioE "set-cookie: session=[^;]+" | head -1 | sed 's/^[Ss]et-[Cc]ookie: //'
+}
+
+# Connexion du super-administrateur : porte DÉDIÉE /super/login (jamais la
+# page publique, qui refuse désormais tout compte propriétaire).
+connexion_super() {
+  local LIGNES ID N KEY_S
+  LIGNES=$(extraire_action "$BASE/super/login" "identifiant")
+  ID=$(sed -n 1p <<<"$LIGNES"); N=$(sed -n 2p <<<"$LIGNES"); KEY_S=$(sed -n 3p <<<"$LIGNES")
+  curl -s -D - -o /dev/null $BASE/super/login -X POST \
+    -F "\$ACTION_REF_${N}=" \
+    -F "\$ACTION_${N}:0={\"id\":\"$ID\",\"bound\":\"\$@1\"}" \
+    -F "\$ACTION_${N}:1=[{}]" \
+    -F "\$ACTION_KEY=$KEY_S" \
     -F "identifiant=$1" -F "mot_de_passe=$2" \
     | grep -ioE "set-cookie: session=[^;]+" | head -1 | sed 's/^[Ss]et-[Cc]ookie: //'
 }
@@ -27,7 +55,7 @@ const db=require('better-sqlite3')('data/app.db');
 console.log(db.prepare(\"SELECT id FROM agents WHERE identifiant='agent2'\").get().id);")
 
 echo "== Connexions des comptes =="
-C_SUPER=$(connexion super super123)
+C_SUPER=$(connexion_super super super123)
 C_ADM_BM=$(connexion admin.beoumi beoumi123)
 C_ADM_BK=$(connexion admin.bouake bouake123)
 C_AG_BM=$(connexion agent1 agent123)

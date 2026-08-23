@@ -9,6 +9,7 @@ import db, {
   type Role,
   type StatutMairie,
   type SuperAdminRow,
+  suspendreMairiesEchues,
 } from "@/lib/db";
 
 const COOKIE = "session";
@@ -100,7 +101,11 @@ export async function getSession(): Promise<Session | null> {
 /** Exige une session dont le rôle fait partie de ceux listés. */
 export async function exigerRole(...roles: Role[]): Promise<Session> {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) {
+    // L'espace propriétaire possède sa propre porte d'entrée, distincte de
+    // la page de connexion publique.
+    redirect(roles.includes("super_admin") ? "/super/login" : "/login");
+  }
   if (!roles.includes(session.role)) redirect(accueilPourRole(session.role));
   return session;
 }
@@ -128,6 +133,8 @@ export async function exigerMairie(
 ): Promise<Session & { mairieId: number }> {
   const session = await exigerRole(...roles);
   if (session.mairieId == null) redirect("/login");
+  // Abonnements échus : suspension automatique avant tout contrôle.
+  suspendreMairiesEchues();
   const st = statutMairie(session.mairieId);
   if (st !== "active") {
     redirect(st === "suspendue" ? "/acces-bloque?suspension=1" : "/acces-bloque?attente=1");
@@ -187,8 +194,12 @@ async function verifierPersonnel(
  * se fait uniquement dans la table dédiée super_administrateurs : aucun
  * compte de mairie ne peut y accéder et réciproquement.
  */
-async function verifierProprietaire(
-  identifiant: string,
+/**
+ * Vérifie les identifiants du super-administrateur. Utilisée UNIQUEMENT par
+ * la page de connexion dédiée /super/login — jamais par la connexion
+ * publique, qui ne concerne que les mairies et les contribuables.
+ */
+export async function verifierProprietaire(  identifiant: string,
   motDePasse: string,
 ): Promise<SuperAdminRow | null> {
   const p = db
@@ -235,13 +246,11 @@ export async function verifierIdentifiants(
 ): Promise<ResultatConnexion> {
   const identifiant = identifiantSaisi.trim().toLowerCase();
 
-  // 1) Propriétaire de l'application (table dédiée).
-  const proprio = await verifierProprietaire(identifiant, motDePasse);
-  if (proprio) {
-    return { ok: true, role: "super_admin", compte: proprio };
-  }
+  // Abonnements arrivés à échéance : suspension automatique avant tout
+  // contrôle d'accès (aucune intervention du super-administrateur requise).
+  suspendreMairiesEchues();
 
-  // 2) Personnel des mairies — l'accès dépend du statut d'abonnement.
+  // 1) Personnel des mairies — l'accès dépend du statut d'abonnement.
   const staff = await verifierPersonnel(identifiant, motDePasse);
   if (staff) {
     const st = statutMairie(staff.mairie_id);

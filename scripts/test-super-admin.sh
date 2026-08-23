@@ -66,15 +66,17 @@ async function posterAction(url, cookie, f, donnees) {
   return { s: r.status, loc: r.headers.get("location"), cookie: r.headers.get("set-cookie"), t: await r.text() };
 }
 
-async function connecter(identifiant, motDePasse) {
-  const login = await get("/login");
-  const r = await posterAction("/login", "", formulaires(login.t)[0], { identifiant, mot_de_passe: motDePasse });
+async function connecter(identifiant, motDePasse, page = "/login") {
+  const login = await get(page);
+  const fs = formulaires(login.t);
+  const f = fs.find((x) => x.html.includes('name="identifiant"')) ?? fs[0];
+  const r = await posterAction(page, "", f, { identifiant, mot_de_passe: motDePasse });
   return { cookie: r.cookie?.split(";")[0] ?? null, loc: r.loc, t: r.t };
 }
 
 // ============================================================ 1. Dashboard
 console.log("== 1. Tableau de bord du propriétaire ==");
-let sup = await connecter("super", "super123");
+let sup = await connecter("super", "super123", "/super/login");
 sup.cookie?.startsWith("session=") ? ok("connexion super") : ko("connexion super impossible");
 
 const dash = await get("/super", sup.cookie);
@@ -227,15 +229,17 @@ db.prepare("SELECT COUNT(*) n FROM paiements").get().n === totalAvant + 1
   ? ok("un seul paiement au total pour deux envois")
   : ko("le nombre total de paiements est incorrect");
 
-// ===================================== 8. Échéance dépassée (badge)
+// ===================================== 8. Échéance dépassée (suspension auto)
 console.log("== 8. Échéance dépassée ==");
 db.prepare("UPDATE mairies SET date_echeance_abonnement=? WHERE nom='Béoumi'")
   .run(Date.now() - 86400000);
-const dash4 = await get("/super", sup.cookie);
-dash4.t.includes("Dépassée") ? ok("badge « Dépassée » affiché") : ko("badge d'échéance manquant");
-(await get("/agent", agBm.cookie)).s === 200
-  ? ok("échéance dépassée : simple alerte, aucun blocage")
-  : ko("blocage injustifié sur échéance dépassée");
+// Toute tentative d'accès mairie déclenche la suspension automatique.
+await get("/agent", agBm.cookie);
+const statutEchu = db.prepare("SELECT statut FROM mairies WHERE nom='Béoumi'").get().statut;
+statutEchu === "suspendue" ? ok("mairie suspendue automatiquement à l'échéance") : ko("pas de suspension automatique (" + statutEchu + ")");
+(await get("/agent", agBm.cookie)).s === 307
+  ? ok("accès agent coupé dès l'échéance dépassée")
+  : ko("l'agent passe encore alors que l'échéance est dépassée");
 
 console.log("");
 console.log(`Résultat : ${PASS} réussis, ${FAIL} échoués`);
