@@ -3,7 +3,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import {
   preparerBase,
-  peuplerDonneesDemo,
+  amorcerBaseNeuve,
 } from "../../scripts/demo-data.mjs";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -39,8 +39,8 @@ db.transaction(() => {
   ) {
     return;
   }
-  console.log("[munitax] base vierge : amorçage des données de démonstration");
-  peuplerDonneesDemo(db);
+  console.log("[munitax] base vierge : création du compte super-administrateur");
+  amorcerBaseNeuve(db);
 }).immediate();
 
 export type Role = "admin" | "agent" | "contribuable" | "super_admin";

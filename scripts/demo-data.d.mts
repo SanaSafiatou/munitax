@@ -11,3 +11,9 @@ export declare function reinitialiserDonneesDemo(options?: OptionsDemo): void;
  * démonstration complètes (comptes, taxes, historique).
  */
 export declare function peuplerDonneesDemo(db: unknown): void;
+
+/**
+ * Amorçage minimal d'une base hébergée vierge : crée uniquement le compte
+ * super-administrateur (identifiant « super », mot de passe « super123 »).
+ */
+export declare function amorcerBaseNeuve(db: unknown): void;

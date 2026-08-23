@@ -4,7 +4,6 @@ import {
   FormulaireCreationAdmin,
   ActionsMairie,
 } from "@/components/formulaires-super";
-import ConfirmationReset from "@/components/confirmation-reset";
 import type { StatutMairie } from "@/lib/db";
 
 export const metadata = { title: "Gestion des mairies" };
@@ -154,18 +153,6 @@ export default function PageSuper() {
       <section className="carte">
         <h2 className="carte-titre">Créer un compte administrateur</h2>
         <FormulaireCreationAdmin mairies={mairies.map((m) => ({ id: m.id, nom: m.nom }))} />
-      </section>
-
-      <section className="carte p-5">
-        <h2 className="font-semibold text-slate-900">
-          Réinitialiser les données de démonstration
-        </h2>
-        <p className="mt-1 mb-4 text-sm leading-relaxed text-slate-500">
-          Restaure l&apos;état initial de <strong>toutes</strong> les mairies :
-          comptes de test, types de taxes et historique fictif. À utiliser
-          uniquement entre deux sessions de test.
-        </p>
-        <ConfirmationReset />
       </section>
     </div>
   );

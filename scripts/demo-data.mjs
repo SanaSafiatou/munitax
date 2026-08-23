@@ -172,15 +172,19 @@ function migrer(db) {
   `);
   db.exec(SCHEMA_SQL);
 
-  // Une mairie par défaut pour reprendre les données antérieures au multi-mairies.
-  const dejaPeuplee = db.prepare("SELECT COUNT(*) AS n FROM mairies").get().n > 0;
+  // Mairie par défaut UNIQUEMENT pour reprendre des données antérieures au
+  // multi-mairies (des agents déjà enregistrés sans mairie dédiée). Sur une
+  // base neuve — ou sur un espace de production volontairement vide — on ne
+  // crée aucune mairie fictive : le super-administrateur ajoutera les vraies.
+  const dejaPeuplee =
+    db.prepare("SELECT COUNT(*) AS n FROM mairies").get().n > 0 ||
+    db.prepare("SELECT COUNT(*) AS n FROM agents").get().n > 0;
   let mairieDefaut = 1;
   if (!dejaPeuplee) {
-    mairieDefaut = Number(
-      db
-        .prepare("INSERT INTO mairies (nom, cree_le) VALUES (?, ?)")
-        .run("Mairie principale", Date.now()).lastInsertRowid,
-    );
+    // Base neuve : pas de mairie fictive. Les insertions d'agents/types plus
+    // bas dans les migrations historiques ne s'exécuteront de toute façon
+    // que si des lignes héritées existent.
+    mairieDefaut = 0;
   } else {
     mairieDefaut = db.prepare("SELECT MIN(id) AS id FROM mairies").get().id ?? 1;
   }
@@ -384,8 +388,29 @@ export function codeContribuable(id) {
  * Remet la base dans un état de démonstration propre :
  * deux mairies (Béoumi et Bouaké), comptes de test et historique fictif.
  */
-export function reinitialiserDonneesDemo(options = {}) {
-  fs.mkdirSync(path.dirname(cheminBase()), { recursive: true });
+/**
+ * Amorçage minimal d'une base hébergée vierge : crée UNIQUEMENT le compte
+ * super-administrateur. Aucune mairie, aucun compte de test : l'espace
+ * démarre vide et le propriétaire y crée ses vraies mairies lui-même.
+ * (Pour les données de démonstration complètes, utiliser
+ * `npm run seed`, qui reste disponible en local.)
+ */
+export function amorcerBaseNeuve(db) {
+  // Les migrations insèrent une mairie fictive « Mairie principale » pour
+  // reprendre d'anciennes bases ; sur une base neuve elle n'a pas de sens
+  // et aucun compte ne peut encore la référencer.
+  db.exec(`
+    DELETE FROM mairies_moyens_paiement;
+    DELETE FROM mairies;
+    DELETE FROM sqlite_sequence WHERE name IN ('mairies','mairies_moyens_paiement');
+  `);
+  db.prepare(
+    `INSERT INTO super_administrateurs (identifiant, mot_de_passe, nom_complet, cree_le)
+     VALUES (?, ?, ?, ?)`,
+  ).run("super", hashSync("super123", 10), "Propriétaire de l'application", Date.now());
+}
+
+export function reinitialiserDonneesDemo(options = {}) {  fs.mkdirSync(path.dirname(cheminBase()), { recursive: true });
   const db = new Database(cheminBase());
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 15000");

@@ -9,32 +9,7 @@ import {
   nomMairie,
 } from "@/lib/auth";
 import { genererIdentifiant, genererMotDePasse } from "@/lib/comptes";
-import { reinitialiserDonneesDemo } from "../../../scripts/demo-data.mjs";
 import { hashSync } from "bcryptjs";
-
-export type EtatReinitialisation = {
-  succes?: string;
-  erreur?: string;
-};
-
-/**
- * Remet toute la base (toutes les mairies) dans l'état de démonstration
- * initial : comptes de test, types de taxes et historique fictif.
- * Réservé au super-administrateur.
- */
-export async function reinitialiserDonnees(): Promise<EtatReinitialisation> {
-  await exigerRole("super_admin");
-  try {
-    reinitialiserDonneesDemo();
-    revalidatePath("/super", "layout");
-    return {
-      succes:
-        "Les données de démonstration ont été réinitialisées pour toutes les mairies. Les comptes de test sont de nouveau opérationnels.",
-    };
-  } catch {
-    return { erreur: "La réinitialisation a échoué. Réessayez." };
-  }
-}
 
 export type EtatCreationMairie = {
   erreur?: string;

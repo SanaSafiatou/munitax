@@ -8,8 +8,9 @@ function slugifier(nom: string): string {
     .replaceAll(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, ".")
-    .replaceAll(/(^\.|\.$)/g, "")
-    .slice(0, 18) || "mairie";
+    .replace(/^\.+|\.+$/g, "")
+    .slice(0, 18)
+    .replace(/^\.+|\.+$/g, "") || "mairie";
 }
 
 /**

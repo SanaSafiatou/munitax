@@ -106,7 +106,7 @@ export function FormulaireCreationAdmin({
             name="telephone"
             type="tel"
             className="champ"
-            placeholder="+237 …"
+            placeholder="+225 …"
           />
         </div>
       </div>

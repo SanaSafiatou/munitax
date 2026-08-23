@@ -76,29 +76,14 @@ export async function inscrireMairie(
   };
 }
 
-const COMPTES_DEMO = {
-  super: { identifiant: "super", motDePasse: "super123" },
-  adminBeoumi: { identifiant: "admin.beoumi", motDePasse: "beoumi123" },
-  adminBouake: { identifiant: "admin.bouake", motDePasse: "bouake123" },
-  agent1: { identifiant: "agent1", motDePasse: "agent123" },
-  agent2: { identifiant: "agent2", motDePasse: "agent123" },
-  testeur: { identifiant: "690000001", motDePasse: "test1234" },
-} as const;
-
 export async function seConnecter(
   _etatPrecedent: EtatConnexion,
   formData: FormData,
 ): Promise<EtatConnexion> {
-  let identifiant = String(formData.get("identifiant") ?? "");
-  let motDePasse = String(formData.get("mot_de_passe") ?? "");
-
-  // Connexion rapide depuis les comptes de démonstration proposés sur la page.
-  const compteDemo = String(formData.get("compte") ?? "");
-  if (!identifiant && !motDePasse && compteDemo in COMPTES_DEMO) {
-    const preset = COMPTES_DEMO[compteDemo as keyof typeof COMPTES_DEMO];
-    identifiant = preset.identifiant;
-    motDePasse = preset.motDePasse;
-  }
+  // Aucune connexion « en un clic » : chaque profil, y compris le
+  // super-administrateur, doit saisir ses propres identifiants.
+  const identifiant = String(formData.get("identifiant") ?? "").trim();
+  const motDePasse = String(formData.get("mot_de_passe") ?? "");
 
   if (!identifiant || !motDePasse) {
     return { erreur: "Veuillez saisir votre identifiant et votre mot de passe." };

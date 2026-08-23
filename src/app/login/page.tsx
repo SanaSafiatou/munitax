@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import FormulaireConnexion from "@/components/formulaire-connexion";
-import ComptesDemo from "@/components/comptes-demo";
 import LogoMarque, { IconeMarque } from "@/components/logo-marque";
 import { accueilPourRole, getSession } from "@/lib/auth";
 
@@ -60,10 +59,6 @@ export default async function PageConnexion() {
             </p>
 
             <FormulaireConnexion />
-
-            <div className="mt-6">
-              <ComptesDemo />
-            </div>
           </div>
 
           <p className="mt-5 text-center text-sm text-slate-500">
