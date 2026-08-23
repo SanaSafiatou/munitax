@@ -60,6 +60,7 @@ export async function creerAgent(
   ).run(nomComplet, telephone || null, identifiant, hashSync(codePin, 10), mairieId, Date.now());
 
   revalidatePath("/admin/agents");
+  revalidatePath("/super");
 
   return {
     compteCree: {
@@ -129,7 +130,13 @@ export async function enregistrerCleMoyen(
 
 /* ======================= Types de taxes ======================= */
 
-export type EtatTypeTaxe = { erreur?: string; succes?: string };
+export type EtatTypeTaxe = {
+  erreur?: string;
+  succes?: string;
+  typeCree?: { id: number; nom: string };
+};
+
+export type EtatAffectationType = { erreur?: string; succes?: string };
 
 function lireMontant(formData: FormData): { erreur?: string; montant: number | null } {
   const libre = formData.get("montant_libre") !== null;
@@ -173,9 +180,19 @@ export async function creerTypeTaxe(
      VALUES (?, ?, ?, ?, ?, 1)`,
   ).run(nom, description || null, montant, montant === null ? 1 : 0, mairieId);
 
+  const cree = db
+    .prepare<[string, number], { id: number }>(
+      "SELECT id FROM types_taxe WHERE nom = ? COLLATE NOCASE AND mairie_id = ? AND actif = 1",
+    )
+    .get(nom, mairieId);
+  if (!cree) return { erreur: "L'enregistrement a échoué, veuillez réessayer." };
+
   revalidatePath("/admin/types-taxe");
   revalidatePath("/agent");
-  return { succes: `« ${nom} » ajouté : il apparaît maintenant côté agent.` };
+  return {
+    succes: `« ${nom} » ajouté : choisissez maintenant les agents qui pourront l'encaisser.`,
+    typeCree: { id: cree.id, nom },
+  };
 }
 
 export async function modifierTypeTaxe(formData: FormData): Promise<void> {
@@ -195,6 +212,61 @@ export async function modifierTypeTaxe(formData: FormData): Promise<void> {
 
   revalidatePath("/admin/types-taxe");
   revalidatePath("/agent");
+}
+
+/**
+ * Enregistre la liste des agents confiés d'un type de taxe donné : seuls ces
+ * agents verront ce type dans leur application. Remplace la sélection précédente.
+ */
+export async function enregistrerAgentsType(
+  _etatPrecedent: EtatAffectationType,
+  formData: FormData,
+): Promise<EtatAffectationType> {
+  const { mairieId } = await exigerMairie("admin");
+
+  const typeId = Number(formData.get("type_taxe_id"));
+  const type = db
+    .prepare<[number, number], { id: number; nom: string }>(
+      "SELECT id, nom FROM types_taxe WHERE id = ? AND mairie_id = ? AND actif = 1",
+    )
+    .get(typeId, mairieId);
+  if (!type) return { erreur: "Type de taxe introuvable." };
+
+  const ids = formData
+    .getAll("agents")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+
+  db.transaction(() => {
+    // On ne retire que les affectations des agents de CETTE mairie.
+    db.prepare(
+      `DELETE FROM affectations_types_taxe
+       WHERE type_taxe_id = ?
+         AND agent_id IN (SELECT id FROM agents WHERE mairie_id = ? AND role = 'agent')`,
+    ).run(typeId, mairieId);
+
+    const insere = db.prepare(
+      "INSERT OR IGNORE INTO affectations_types_taxe (agent_id, type_taxe_id) VALUES (?, ?)",
+    );
+    for (const idAgent of ids) {
+      const a = db
+        .prepare<[number, number], { id: number }>(
+          "SELECT id FROM agents WHERE id = ? AND mairie_id = ? AND role = 'agent' AND actif = 1",
+        )
+        .get(idAgent, mairieId);
+      if (a) insere.run(idAgent, typeId);
+    }
+  })();
+
+  revalidatePath("/admin/types-taxe");
+  revalidatePath("/admin/agents");
+  revalidatePath("/agent");
+  return {
+    succes:
+      ids.length === 0
+        ? `« ${type.nom} » retiré à tous vos agents.`
+        : `« ${type.nom} » confié à ${ids.length} agent${ids.length > 1 ? "s" : ""}.`,
+  };
 }
 
 export async function supprimerTypeTaxe(formData: FormData): Promise<void> {

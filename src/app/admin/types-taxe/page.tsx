@@ -2,6 +2,7 @@ import db from "@/lib/db";
 import { exigerMairie, nomMairie } from "@/lib/auth";
 import { montantFmt } from "@/lib/dates";
 import FormulaireTypeTaxe from "@/components/formulaire-type-taxe";
+import AffectationAgentsType from "@/components/affectation-agents-type";
 import { modifierTypeTaxe, supprimerTypeTaxe } from "@/app/admin/actions";
 
 export const metadata = { title: "Types de taxes" };
@@ -29,6 +30,26 @@ export default async function PageTypesTaxe() {
     )
     .all(session.mairieId);
 
+  const agents = db
+    .prepare<[number], { id: number; nom_complet: string; identifiant: string }>(
+      "SELECT id, nom_complet, identifiant FROM agents WHERE mairie_id = ? AND role = 'agent' AND actif = 1 ORDER BY nom_complet",
+    )
+    .all(session.mairieId);
+
+  const affectesParType = new Map<number, number[]>();
+  for (const r of db
+    .prepare<[number], { type_taxe_id: number; agent_id: number }>(
+      `SELECT a.type_taxe_id, a.agent_id
+       FROM affectations_types_taxe a
+       JOIN agents g ON g.id = a.agent_id
+       WHERE g.mairie_id = ? AND g.role = 'agent'`,
+    )
+    .all(session.mairieId)) {
+    const liste = affectesParType.get(r.type_taxe_id) ?? [];
+    liste.push(r.agent_id);
+    affectesParType.set(r.type_taxe_id, liste);
+  }
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <header className="mb-6">
@@ -41,7 +62,7 @@ export default async function PageTypesTaxe() {
 
       <section className="carte mb-8 p-6 sm:p-8">
         <h2 className="mb-4 text-lg font-bold text-slate-900">Ajouter un type de taxe</h2>
-        <FormulaireTypeTaxe />
+        <FormulaireTypeTaxe agents={agents} />
       </section>
 
       <section>
@@ -124,6 +145,18 @@ export default async function PageTypesTaxe() {
                     </form>
                   </div>
                 </div>
+              <details className="mt-3 border-t border-slate-100 pt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-emerald-700">
+                  Agents assignés ({(affectesParType.get(t.id) ?? []).length}/{agents.length})
+                </summary>
+                <div className="mt-3">
+                  <AffectationAgentsType
+                    typeId={t.id}
+                    agents={agents}
+                    assignes={affectesParType.get(t.id) ?? []}
+                  />
+                </div>
+              </details>
               </li>
             ))}
           </ul>

@@ -614,6 +614,8 @@ export function peuplerDonneesDemo(db) {
   // Démo : chaque agent voit par défaut tous les types de sa mairie
   db.prepare(
     `INSERT OR IGNORE INTO affectations_types_taxe (agent_id, type_taxe_id)
-     SELECT a.id, t.id FROM agents a JOIN types_taxe t ON t.mairie_id = a.mairie_id`,
+     SELECT a.id, t.id FROM agents a
+     JOIN types_taxe t ON t.mairie_id = a.mairie_id
+     WHERE a.role = 'agent'`,
   ).run();
 }

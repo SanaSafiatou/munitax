@@ -35,6 +35,8 @@ function BadgeStatut({ statut }: { statut: StatutMairie }) {
   );
 }
 
+export const dynamic = "force-dynamic";
+
 export default function PageSuper() {
   const mairies = db
     .prepare<
@@ -52,7 +54,7 @@ export default function PageSuper() {
     >(
       `SELECT m.id, m.nom, m.statut, m.date_echeance_abonnement, m.responsable, m.contact,
               (SELECT COUNT(*) FROM agents a
-               WHERE a.mairie_id = m.id AND a.actif = 1) AS nb_agents,
+               WHERE a.mairie_id = m.id AND a.role = 'agent' AND a.actif = 1) AS nb_agents,
               (SELECT a.id FROM agents a
                WHERE a.mairie_id = m.id AND a.role = 'admin' AND a.actif = 1
                ORDER BY a.id LIMIT 1) AS admin_id

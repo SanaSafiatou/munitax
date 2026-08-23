@@ -3,16 +3,22 @@
 import { useActionState } from "react";
 import { creerTypeTaxe, type EtatTypeTaxe } from "@/app/admin/actions";
 import { Spinner } from "@/components/formulaire-connexion";
+import AffectationAgentsType, { type AgentListe } from "@/components/affectation-agents-type";
 
 const ETAT_INITIAL: EtatTypeTaxe = {};
 
-export default function FormulaireTypeTaxe() {
+export default function FormulaireTypeTaxe({
+  agents,
+}: {
+  agents: AgentListe[];
+}) {
   const [etat, action, enCours] = useActionState<EtatTypeTaxe, FormData>(
     creerTypeTaxe,
     ETAT_INITIAL,
   );
 
   return (
+    <div>
     <form action={action} className="space-y-4">
       <div>
         <label htmlFor="nom" className="etiquette">
@@ -74,5 +80,18 @@ export default function FormulaireTypeTaxe() {
         )}
       </button>
     </form>
+
+    {etat.typeCree && (
+      <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200">
+        <AffectationAgentsType
+          key={etat.typeCree.id}
+          typeId={etat.typeCree.id}
+          nom={etat.typeCree.nom}
+          agents={agents}
+          assignes={[]}
+        />
+      </div>
+    )}
+  </div>
   );
 }
