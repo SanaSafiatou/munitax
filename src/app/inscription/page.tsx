@@ -4,6 +4,10 @@ import FormulaireInscription from "@/components/formulaire-inscription";
 
 export const metadata = { title: "Créer un compte" };
 
+// La liste des mairies change sans redéploiement : rendu obligatoirement
+// dynamique (sinon la page est figée sur l'état de la base au build).
+export const dynamic = "force-dynamic";
+
 export default async function PageInscription() {
   const mairies = db
     .prepare<[], { id: number; nom: string }>(
