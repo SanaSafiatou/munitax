@@ -1,0 +1,27 @@
+# Déploiement MuniTax sur Render (plan gratuit pour démarrer).
+#
+# Notes importantes :
+#   - Le plan gratuit s'endort après 15 minutes sans visite ; le premier
+#     visiteur attend environ une minute. Au réveil, la base vierge est
+#     automatiquement re-amorcée avec les comptes de démonstration.
+#   - Pour conserver les données réelles, passer l'instance en Starter
+#     ($7/mois) et attacher un disque persistant (+0,25 $/Go/mois).
+services:
+  - type: web
+    name: munitax
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /login
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22.23.2"
+      - key: APP_TIMEZONE
+        value: Africa/Douala
+      # Secret de signature des sessions, généré par Render.
+      - key: SESSION_SECRET
+        generateValue: true

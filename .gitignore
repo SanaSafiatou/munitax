@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# base de données locale
+/data
+
+# Tunnel et artefacts de construction Android
+.tunnel-url
+apk-builder/.travail/
+public/apk/*.idsig
