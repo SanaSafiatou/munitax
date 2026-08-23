@@ -126,3 +126,100 @@ export async function enregistrerCleMoyen(
     succes: `${libelleMoyen(operateur)} activé — disponible immédiatement pour vos agents.`,
   };
 }
+
+/* ======================= Types de taxes ======================= */
+
+export type EtatTypeTaxe = { erreur?: string; succes?: string };
+
+function lireMontant(formData: FormData): { erreur?: string; montant: number | null } {
+  const libre = formData.get("montant_libre") !== null;
+  const brut = String(formData.get("montant_fixe") ?? "").replace(/[\s.]/g, "");
+  if (libre) return { montant: null };
+  if (!/^\d{1,9}$/.test(brut) || Number(brut) < 1) {
+    return {
+      erreur:
+        "Indiquez un montant fixe en FCFA (1 minimum), ou cochez « Montant à saisir par l'agent ».",
+      montant: null,
+    };
+  }
+  return { montant: Number(brut) };
+}
+
+export async function creerTypeTaxe(
+  _etatPrecedent: EtatTypeTaxe,
+  formData: FormData,
+): Promise<EtatTypeTaxe> {
+  const { mairieId } = await exigerMairie("admin");
+
+  const nom = String(formData.get("nom") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (nom.length < 2) {
+    return { erreur: "Veuillez indiquer le nom du type de taxe (2 caractères minimum)." };
+  }
+  const { erreur, montant } = lireMontant(formData);
+  if (erreur) return { erreur };
+
+  const existe = db
+    .prepare<[string, number], { id: number }>(
+      "SELECT id FROM types_taxe WHERE nom = ? COLLATE NOCASE AND mairie_id = ? AND actif = 1",
+    )
+    .get(nom, mairieId);
+  if (existe) {
+    return { erreur: `« ${nom} » existe déjà pour votre mairie.` };
+  }
+
+  db.prepare(
+    `INSERT INTO types_taxe (nom, description, montant_fixe, montant_libre, mairie_id, actif)
+     VALUES (?, ?, ?, ?, ?, 1)`,
+  ).run(nom, description || null, montant, montant === null ? 1 : 0, mairieId);
+
+  revalidatePath("/admin/types-taxe");
+  revalidatePath("/agent");
+  return { succes: `« ${nom} » ajouté : il apparaît maintenant côté agent.` };
+}
+
+export async function modifierTypeTaxe(formData: FormData): Promise<void> {
+  const { mairieId } = await exigerMairie("admin");
+
+  const id = Number(formData.get("id"));
+  const nom = String(formData.get("nom") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  if (!Number.isInteger(id) || nom.length < 2) return;
+  const { montant } = lireMontant(formData);
+  if (!montant && formData.get("montant_libre") === null) return;
+
+  db.prepare(
+    `UPDATE types_taxe SET nom = ?, description = ?, montant_fixe = ?, montant_libre = ?
+     WHERE id = ? AND mairie_id = ? AND actif = 1`,
+  ).run(nom, description || null, montant, montant === null ? 1 : 0, id, mairieId);
+
+  revalidatePath("/admin/types-taxe");
+  revalidatePath("/agent");
+}
+
+export async function supprimerTypeTaxe(formData: FormData): Promise<void> {
+  const { mairieId } = await exigerMairie("admin");
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+
+  // Un type déjà utilisé par des encaissements est conservé (historique,
+  // reçus) mais désactivé : il disparaît simplement des listes.
+  const utilise = db
+    .prepare<[number], { id: number }>(
+      "SELECT id FROM paiements WHERE type_taxe_id = ? LIMIT 1",
+    )
+    .get(id);
+
+  if (utilise) {
+    db.prepare("UPDATE types_taxe SET actif = 0 WHERE id = ? AND mairie_id = ?").run(
+      id,
+      mairieId,
+    );
+  } else {
+    db.prepare("DELETE FROM types_taxe WHERE id = ? AND mairie_id = ?").run(id, mairieId);
+  }
+
+  revalidatePath("/admin/types-taxe");
+  revalidatePath("/agent");
+}

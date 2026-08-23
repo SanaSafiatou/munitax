@@ -31,6 +31,11 @@ const items: ElementNav[] = [
     icone: icone("M3 12l9-8 9 8M5.5 10.5V20h13v-9.5M10 20v-5h4v5"),
   },
   {
+    href: "/admin/types-taxe",
+    libelle: "Types de taxes",
+    icone: icone("M9.5 3v2m5-2v2m-8 0h11a1.5 1.5 0 0 1 1.5 1.5v11A2.5 2.5 0 0 1 16.5 20h-9A2.5 2.5 0 0 1 5 17.5v-11A1.5 1.5 0 0 1 6.5 5H8m2 0h4M8.5 10h7m-7 4h7m-7 4h4"),
+  },
+  {
     href: "/admin/moyens-paiement",
     libelle: "Moyens de paiement",
     icone: icone("M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"),
