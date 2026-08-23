@@ -32,6 +32,7 @@ export default function FormulaireConnexionSuper() {
         </label>
         <ChampMotDePasse
           id="super-motdepasse"
+          name="mot_de_passe"
           className="champ mt-1 bg-slate-800 text-slate-100 placeholder:text-slate-500"
         />
       </div>

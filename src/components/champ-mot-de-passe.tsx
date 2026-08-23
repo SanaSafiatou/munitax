@@ -8,12 +8,15 @@ import { useState } from "react";
  */
 export default function ChampMotDePasse({
   id,
+  name,
   autoComplete = "current-password",
   placeholder = "••••••••",
   className = "champ",
   requis = true,
 }: {
   id: string;
+  /** Nom du champ envoyé au serveur (par défaut : identique à id). */
+  name?: string;
   autoComplete?: string;
   placeholder?: string;
   className?: string;
@@ -25,7 +28,7 @@ export default function ChampMotDePasse({
     <div className="relative">
       <input
         id={id}
-        name={id}
+        name={name ?? id}
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
         required={requis}
