@@ -10,10 +10,14 @@ export default async function PageAgent() {
   const { debut, fin } = bornesJour(aujourdhuiStr());
 
   const types = db
-    .prepare<[number], { id: number; nom: string; description: string | null; montant_fixe: number | null; montant_libre: number }>(
-      "SELECT id, nom, description, montant_fixe, montant_libre FROM types_taxe WHERE actif = 1 AND mairie_id = ? ORDER BY nom",
+    .prepare<[number, number], { id: number; nom: string; description: string | null; montant_fixe: number | null; montant_libre: number }>(
+      `SELECT t.id, t.nom, t.description, t.montant_fixe, t.montant_libre
+       FROM types_taxe t
+       JOIN affectations_types_taxe a ON a.type_taxe_id = t.id AND a.agent_id = ?
+       WHERE t.actif = 1 AND t.mairie_id = ?
+       ORDER BY t.nom`,
     )
-    .all(session.mairieId);
+    .all(session.id, session.mairieId);
 
   const resume = db
     .prepare<[number, number, number], { nb: number; total: number | null }>(
@@ -58,7 +62,7 @@ export default async function PageAgent() {
           ))}
           {types.length === 0 && (
             <p className="carte p-4 text-center text-sm text-slate-500">
-              Aucun type de taxe configuré. Contactez l&apos;administrateur.
+              Aucun type de taxe ne vous a été confié pour le moment. Contactez votre administrateur.
             </p>
           )}
         </div>

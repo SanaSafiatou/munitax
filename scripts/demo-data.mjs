@@ -102,6 +102,12 @@ export const SCHEMA_SQL = `
     uuid_client     TEXT,
     operateur       TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS affectations_types_taxe (
+    agent_id      INTEGER NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    type_taxe_id  INTEGER NOT NULL REFERENCES types_taxe(id) ON DELETE CASCADE,
+    PRIMARY KEY (agent_id, type_taxe_id)
+  );
 `;
 
 const TZ = process.env.APP_TIMEZONE || "Africa/Douala";
@@ -604,4 +610,10 @@ export function peuplerDonneesDemo(db) {
   const OPERATEUR_DEMO = "Paiement de démonstration";
   ajouterPaiement({ mairieId: beoumiId, contribuableId: testeur1Id, typeId: marcheBm, montant: 2000, payeur: "Clarisse Testeur (démo)", quand: debutJournee(auj) + 11 * 3600_000 + 30 * 60_000, mode: "en_ligne", operateur: OPERATEUR_DEMO });
   ajouterPaiement({ mairieId: beoumiId, contribuableId: testeur2Id, typeId: stationnementBm, montant: 500, payeur: "Boris Testeur (démo)", quand: debutJournee(avantHier) + 12 * 3600_000 + 10 * 60_000, mode: "en_ligne", operateur: OPERATEUR_DEMO });
+
+  // Démo : chaque agent voit par défaut tous les types de sa mairie
+  db.prepare(
+    `INSERT OR IGNORE INTO affectations_types_taxe (agent_id, type_taxe_id)
+     SELECT a.id, t.id FROM agents a JOIN types_taxe t ON t.mairie_id = a.mairie_id`,
+  ).run();
 }

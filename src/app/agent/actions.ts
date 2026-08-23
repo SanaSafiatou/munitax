@@ -88,13 +88,16 @@ export async function enregistrerPaiement(
   const latitude = Number(formData.get("latitude"));
   const longitude = Number(formData.get("longitude"));
 
-  // Le type de taxe doit appartenir à la mairie de l'agent.
+  // Le type doit appartenir à la mairie de l'agent ET lui être confié.
   const type = db
-    .prepare<[number, number], { id: number; montant_fixe: number | null; montant_libre: number }>(
-      "SELECT id, montant_fixe, montant_libre FROM types_taxe WHERE id = ? AND mairie_id = ? AND actif = 1",
+    .prepare<[number, number, number], { id: number; montant_fixe: number | null; montant_libre: number }>(
+      `SELECT t.id, t.montant_fixe, t.montant_libre
+       FROM types_taxe t
+       JOIN affectations_types_taxe a ON a.type_taxe_id = t.id AND a.agent_id = ?
+       WHERE t.id = ? AND t.mairie_id = ? AND t.actif = 1`,
     )
-    .get(typeId, session.mairieId);
-  if (!type) return { erreur: "Type de taxe invalide." };
+    .get(session.id, typeId, session.mairieId);
+  if (!type) return { erreur: "Type de taxe invalide ou non confié à cet agent." };
 
   // Le contribuable doit appartenir à la même mairie que l'agent.
   const contribuable = db

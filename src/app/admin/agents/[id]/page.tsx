@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import db from "@/lib/db";
 import { exigerMairie } from "@/lib/auth";
+import { enregistrerTypesAgent } from "@/app/admin/actions";
 import { bornesPeriode, estPeriodeValide, type Periode } from "@/lib/collectes";
 import { dateHeureStr, montantFmt } from "@/lib/dates";
 
@@ -54,6 +55,21 @@ export default async function PageFicheAgent(
        ORDER BY p.date_heure DESC LIMIT 500`,
     )
     .all(agent.id, b.debut, b.fin);
+
+  const typesMairie = db
+    .prepare<[number], { id: number; nom: string; montant_fixe: number | null; montant_libre: number }>(
+      "SELECT id, nom, montant_fixe, montant_libre FROM types_taxe WHERE mairie_id = ? AND actif = 1 ORDER BY nom",
+    )
+    .all(mairieId);
+
+  const confies = new Set(
+    db
+      .prepare<[number], { type_taxe_id: number }>(
+        "SELECT type_taxe_id FROM affectations_types_taxe WHERE agent_id = ?",
+      )
+      .all(agent.id)
+      .map((r) => r.type_taxe_id),
+  );
 
   const valides = lignes.filter((l) => l.statut === "valide");
   const total = valides.reduce((s, l) => s + l.montant, 0);
@@ -152,6 +168,37 @@ export default async function PageFicheAgent(
             </div>
           ))}
       </div>
+
+      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+        <h2 className="text-base font-bold text-slate-900">Types de taxes confiés</h2>
+        <p className="mt-1 mb-4 text-sm text-slate-500">
+          L&apos;agent ne voit dans son application que les types cochés ici.
+          {typesMairie.length === 0 && " Créez d'abord vos types dans « Types de taxes »."}
+        </p>
+        <form action={enregistrerTypesAgent} className="space-y-3">
+          <input type="hidden" name="agent_id" value={agent.id} />
+          {typesMairie.map((t) => (
+            <label key={t.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm ring-1 ring-slate-200 transition hover:bg-slate-50">
+              <input
+                type="checkbox"
+                name="types"
+                value={t.id}
+                defaultChecked={confies.has(t.id)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="font-medium text-slate-800">{t.nom}</span>
+              <span className="text-slate-500">
+                {t.montant_libre ? "(montant libre)" : montantFmt(t.montant_fixe ?? 0)}
+              </span>
+            </label>
+          ))}
+          {typesMairie.length > 0 && (
+            <button type="submit" className="btn-primaire py-2.5">
+              Enregistrer les types confiés
+            </button>
+          )}
+        </form>
+      </section>
 
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
         {lignes.length === 0 ? (

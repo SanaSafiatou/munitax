@@ -223,3 +223,44 @@ export async function supprimerTypeTaxe(formData: FormData): Promise<void> {
   revalidatePath("/admin/types-taxe");
   revalidatePath("/agent");
 }
+
+/**
+ * Enregistre la liste des types de taxes confiés à un agent : l'application
+ * agent n'affiche plus QUE ces types. Remplace l'affectation précédente.
+ */
+export async function enregistrerTypesAgent(formData: FormData): Promise<void> {
+  const { mairieId } = await exigerMairie("admin");
+
+  const agentId = Number(formData.get("agent_id"));
+  const agent = db
+    .prepare<[number, number], { id: number; role: string }>(
+      "SELECT id, role FROM agents WHERE id = ? AND mairie_id = ? AND actif = 1",
+    )
+    .get(agentId, mairieId);
+  if (!agent || agent.role !== "agent") return;
+
+  const ids = formData
+    .getAll("types")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n));
+
+  db.transaction(() => {
+    db.prepare("DELETE FROM affectations_types_taxe WHERE agent_id = ?").run(agentId);
+    const insere = db.prepare(
+      "INSERT OR IGNORE INTO affectations_types_taxe (agent_id, type_taxe_id) VALUES (?, ?)",
+    );
+    for (const id of ids) {
+      // Seuls les types réellement actifs de LA mairie de l'agent sont acceptés.
+      const t = db
+        .prepare<[number, number], { id: number }>(
+          "SELECT id FROM types_taxe WHERE id = ? AND mairie_id = ? AND actif = 1",
+        )
+        .get(id, mairieId);
+      if (t) insere.run(agentId, id);
+    }
+  })();
+
+  revalidatePath(`/admin/agents/${agentId}`);
+  revalidatePath("/admin/agents");
+  revalidatePath("/agent");
+}

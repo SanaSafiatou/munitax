@@ -61,9 +61,6 @@ export default async function PageTypesTaxe() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">{t.nom}</p>
-                    {t.description && (
-                      <p className="text-sm text-slate-500">{t.description}</p>
-                    )}
                     <p className="mt-1 text-sm text-slate-600">
                       {t.montant_libre
                         ? "Montant à saisir par l'agent"
@@ -86,7 +83,6 @@ export default async function PageTypesTaxe() {
                       >
                         <input type="hidden" name="id" value={t.id} />
                         <input name="nom" defaultValue={t.nom} required minLength={2} className="champ" aria-label="Nom" />
-                        <input name="description" defaultValue={t.description ?? ""} className="champ" placeholder="Description (facultative)" />
                         <input
                           name="montant_fixe"
                           type="number"

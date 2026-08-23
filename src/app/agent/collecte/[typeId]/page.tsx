@@ -10,15 +10,19 @@ export const metadata = { title: "Nouvelle collecte" };
 export default async function PageCollecte(
   props: PageProps<"/agent/collecte/[typeId]">,
 ) {
-  const { mairieId } = await exigerMairie("agent");
+  const session = await exigerMairie("agent");
+  const { mairieId } = session;
   const { typeId } = await props.params;
 
-  // Le type de taxe doit appartenir à la mairie de l'agent.
+  // Le type doit appartenir à la mairie de l'agent ET lui être confié.
   const type = db
-    .prepare<[number, number], { id: number; nom: string; description: string | null; montant_fixe: number | null; montant_libre: number }>(
-      "SELECT id, nom, description, montant_fixe, montant_libre FROM types_taxe WHERE id = ? AND mairie_id = ? AND actif = 1",
+    .prepare<[number, number, number], { id: number; nom: string; description: string | null; montant_fixe: number | null; montant_libre: number }>(
+      `SELECT t.id, t.nom, t.description, t.montant_fixe, t.montant_libre
+       FROM types_taxe t
+       JOIN affectations_types_taxe a ON a.type_taxe_id = t.id AND a.agent_id = ?
+       WHERE t.id = ? AND t.mairie_id = ? AND t.actif = 1`,
     )
-    .get(Number(typeId), mairieId);
+    .get(session.id, Number(typeId), mairieId);
   if (!type) notFound();
 
   // Seuls les opérateurs dont la clé API a été renseignée par l'admin de

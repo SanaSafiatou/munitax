@@ -14,31 +14,18 @@ export default function FormulaireTypeTaxe() {
 
   return (
     <form action={action} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="nom" className="etiquette">
-            Nom du type de taxe
-          </label>
-          <input
-            id="nom"
-            name="nom"
-            required
-            minLength={2}
-            className="champ mt-1"
-            placeholder="ex : Taxe de marché"
-          />
-        </div>
-        <div>
-          <label htmlFor="description" className="etiquette">
-            Description (facultatif)
-          </label>
-          <input
-            id="description"
-            name="description"
-            className="champ mt-1"
-            placeholder="ex : Étal ou place au marché"
-          />
-        </div>
+      <div>
+        <label htmlFor="nom" className="etiquette">
+          Nom du type de taxe
+        </label>
+        <input
+          id="nom"
+          name="nom"
+          required
+          minLength={2}
+          className="champ mt-1"
+          placeholder="ex : Taxe de marché"
+        />
       </div>
 
       <div className="grid items-end gap-4 sm:grid-cols-2">
