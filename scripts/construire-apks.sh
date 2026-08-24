@@ -2,14 +2,25 @@
 # Construit les APK Android MuniTax (Agent + Contribuable).
 # Ces applications sont des lanceurs WebView pointant vers l'URL publique du serveur.
 #
-# Usage :  URL_TUNNEL=https://xxxx.trycloudflare.com ./scripts/construire-apks.sh
+# Par défaut, l'URL de production est utilisée (https://munitax.onrender.com).
+# Usage :  ./scripts/construire-apks.sh
+# Ou avec une autre adresse (ex : tunnel Cloudflare temporaire) :
+#          URL_SITE=https://xxxx.trycloudflare.com ./scripts/construire-apks.sh
+#
+# IMPORTANT : incrémenter VERSION_CODE à chaque reconstruction pour que les
+# appareils remplacent bien l'APK précédent.
 set -euo pipefail
 
-URL_TUNNEL="${URL_TUNNEL:-}"
-if [[ ! "$URL_TUNNEL" =~ ^https://[a-zA-Z0-9.-]+$ ]]; then
-  echo "Erreur : renseignez URL_TUNNEL (ex : URL_TUNNEL=https://xxx.trycloudflare.com)" >&2
+URL_SITE="${URL_SITE:-${URL_TUNNEL:-https://munitax.onrender.com}}"
+VERSION_CODE="4"
+VERSION_NAME="1.3"
+
+if [[ ! "$URL_SITE" =~ ^https://[a-zA-Z0-9.-]+(/)?$ ]]; then
+  echo "Erreur : URL_SITE invalide (ex : https://munitax.onrender.com)" >&2
   exit 1
 fi
+# On normalise sans slash final pour concaténation propre des chemins.
+URL_SITE="${URL_SITE%/}"
 
 PROJET="$(cd "$(dirname "$0")/.." && pwd)"
 SDK="${ANDROID_HOME:-$HOME/Android/Sdk}"
@@ -40,14 +51,14 @@ construire_apk() {
   cat > "$d/AndroidManifest.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="$paquet" android:versionCode="3" android:versionName="1.2">
+    package="$paquet" android:versionCode="$VERSION_CODE" android:versionName="$VERSION_NAME">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <application android:label="$nom_app" android:icon="@mipmap/ic_launcher"
       android:theme="@android:style/Theme.Material.Light.NoActionBar">
-    <meta-data android:name="cf.munitax.URL" android:value="${URL_TUNNEL}${chemin}"/>
+    <meta-data android:name="cf.munitax.URL" android:value="${URL_SITE}${chemin}"/>
     <activity android:name=".MainActivity" android:exported="true"
         android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
       <intent-filter>
@@ -94,6 +105,8 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
@@ -106,13 +119,27 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle etat) {
         super.onCreate(etat);
         web = new WebView(this);
+        // Fond vert de marque pendant les chargements (évite tout écran blanc
+        // apparent, notamment pendant le démarrage à froid du serveur).
+        web.setBackgroundColor(0xFF065F46);
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setGeolocationEnabled(true);
         web.setWebViewClient(new WebViewClient() {
+            // API >= 23 : callback appelé pour les échecs de chargement.
+            // Sans lui, un hôte inaccessible laisse la WebView blanche.
+            @Override
+            public void onReceivedError(WebView vue, WebResourceRequest req,
+                    WebResourceError err) {
+                if (req.isForMainFrame()) afficherErreur();
+            }
+
+            @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView vue, int code, String desc, String urlKo) {
-                afficherErreur();
+                // Compatibilité : ne pas remplacer l'app pour une simple
+                // ressource secondaire manquante (favicon…).
+                if (urlKo != null && urlKo.startsWith(origine())) afficherErreur();
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -163,7 +190,16 @@ public class MainActivity extends Activity {
                 .getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA).metaData;
             if (md != null) return md.getString("cf.munitax.URL");
         } catch (PackageManager.NameNotFoundException ignorede) { }
-        return "$URL_TUNNEL";
+        return "$URL_SITE";
+    }
+
+    /** Origine (schéma+hôte) de l'URL de départ, pour filtrer les erreurs. */
+    private String origine() {
+        String u = urlDepart();
+        int apresSchema = u.indexOf("://");
+        if (apresSchema < 0) return u;
+        int slash = u.indexOf('/', apresSchema + 3);
+        return slash < 0 ? u : u.substring(0, slash);
     }
 
     @Override
