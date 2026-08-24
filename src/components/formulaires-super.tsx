@@ -6,9 +6,11 @@ import {
   creerAdminMairie,
   changerStatutMairie,
   seConnecterComme,
+  supprimerAdminMairie,
   type EtatCreationMairie,
   type EtatCreationAdmin,
   type EtatActionMairie,
+  type EtatSuppressionAdmin,
 } from "@/app/super/actions";
 import { Spinner } from "@/components/formulaire-connexion";
 
@@ -189,6 +191,10 @@ export function ActionsMairie({
     EtatActionMairie,
     FormData
   >(seConnecterComme, {});
+  const [etatSup, actionSup, enCoursSup] = useActionState<
+    EtatSuppressionAdmin,
+    FormData
+  >(supprimerAdminMairie, {});
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -234,15 +240,39 @@ export function ActionsMairie({
             Se connecter
           </button>
         </form>
+        {mairie.adminId && (
+          <form
+            action={actionSup}
+            onSubmit={(e) => {
+              if (
+                !confirm(
+                  "Êtes-vous sûr ? Ce compte administrateur sera supprimé définitivement, sans possibilité de récupération.",
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <input type="hidden" name="agent_id" value={mairie.adminId} />
+            <button
+              type="submit"
+              disabled={enCoursSup}
+              title="Supprimer définitivement ce compte administrateur"
+              className={`${clsBouton} bg-red-600 text-white hover:bg-red-500`}
+            >
+              Supprimer
+            </button>
+          </form>
+        )}
       </div>
-      {(etatStatut.erreur || etatImp.erreur) && (
+      {(etatStatut.erreur || etatImp.erreur || etatSup.erreur) && (
         <p role="alert" className="max-w-56 text-right text-xs text-red-600">
-          {etatStatut.erreur ?? etatImp.erreur}
+          {etatStatut.erreur ?? etatImp.erreur ?? etatSup.erreur}
         </p>
       )}
-      {etatStatut.succes && (
+      {(etatStatut.succes || etatSup.succes) && (
         <p role="status" className="max-w-56 text-right text-xs text-emerald-700">
-          {etatStatut.succes}
+          {etatStatut.succes ?? etatSup.succes}
         </p>
       )}
     </div>

@@ -247,3 +247,64 @@ export async function seConnecterComme(
   });
   redirect("/admin");
 }
+
+export type EtatSuppressionAdmin = {
+  erreur?: string;
+  succes?: string;
+};
+
+/**
+ * Supprime DÉFINITIVEMENT le compte administrateur d'une mairie. Seuls les
+ * comptes de rôle « admin » sont visés : les agents collecteurs ne sont pas
+ * concernés par cet écran. Les sessions ouvertes du compte supprimé sont
+ * invalidées automatiquement (le jeton est revérifié en base à chaque
+ * requête). L'historique des messages qu'il a envoyés est conservé.
+ */
+export async function supprimerAdminMairie(
+  _etatPrecedent: EtatSuppressionAdmin,
+  formData: FormData,
+): Promise<EtatSuppressionAdmin> {
+  await exigerRole("super_admin");
+  const agentId = Number(formData.get("agent_id"));
+
+  const admin = db
+    .prepare<[number], { id: number; nom_complet: string; identifiant: string }>(
+      "SELECT id, nom_complet, identifiant FROM agents WHERE id = ? AND role = 'admin'",
+    )
+    .get(agentId);
+  if (!admin) {
+    return { erreur: "Aucun compte administrateur trouvé." };
+  }
+
+  // Un compte lié à des encaissements ne peut pas être supprimé sans casser
+  // l'historique financier : on refuse et on oriente vers la suspension.
+  const nbPaiements = (
+    db
+      .prepare<[number], { n: number }>(
+        "SELECT COUNT(*) AS n FROM paiements WHERE agent_id = ?",
+      )
+      .get(agentId)?.n ?? 0
+  ) as number;
+  if (nbPaiements > 0) {
+    return {
+      erreur: `${admin.nom_complet} est rattaché à ${nbPaiements} encaissement(s). Suspendez la mairie plutôt que de supprimer ce compte.`,
+    };
+  }
+
+  db.transaction(() => {
+    // Les affectations de types de taxes partent avec le compte (CASCADE) ;
+    // les messages envoyés restent consultables, simplement sans auteur.
+    db.prepare("UPDATE messages SET agent_id = NULL WHERE agent_id = ?").run(
+      agentId,
+    );
+    db.prepare("DELETE FROM agents WHERE id = ? AND role = 'admin'").run(
+      agentId,
+    );
+  })();
+
+  revalidatePath("/super");
+
+  return {
+    succes: `Compte administrateur « ${admin.identifiant} » supprimé définitivement. Vous pouvez en recréer un pour cette mairie à tout moment.`,
+  };
+}
