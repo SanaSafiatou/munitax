@@ -54,6 +54,12 @@ ID_AGENT2=$(node -e "
 const db=require('better-sqlite3')('data/app.db');
 console.log(db.prepare(\"SELECT id FROM agents WHERE identifiant='agent2'\").get().id);")
 
+echo "== Réinitialisation des données de démonstration =="
+npm run seed --silent >/dev/null 2>&1 && ok "base réinitialisée"
+ID_AGENT2=$(node -e "
+const db=require('better-sqlite3')('data/app.db');
+console.log(db.prepare(\"SELECT id FROM agents WHERE identifiant='agent2'\").get().id);")
+
 echo "== Connexions des comptes =="
 C_SUPER=$(connexion_super super super123)
 C_ADM_BM=$(connexion admin.beoumi beoumi123)
@@ -92,7 +98,7 @@ echo "== Cloisonnement des fiches et cartes =="
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$C_ADM_BM" "$BASE/admin/agents/$ID_AGENT2")
 verif "Admin Béoumi → fiche agent Bouaké = 404" "404" "$CODE"
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$C_AG_BM" "$BASE/carte-contribuable/6")
-verif "Agent Béoumi → carte contribuable Bouaké (MT-000006) = 404" "404" "$CODE"
+verif "Agent Béoumi → carte contribuable Bouaké (MT-0006) = 404" "404" "$CODE"
 CODE=$(curl -s -o /dev/null -w "%{http_code}" -b "$C_AG_BK" "$BASE/carte-contribuable/6")
 verif "Agent Bouaké → carte contribuable Bouaké = 200" "200" "$CODE"
 CODE=$(curl -s -b "$C_AG_BM" "$BASE/agent/collecte/4")

@@ -12,7 +12,9 @@ ok() { PASS=$((PASS+1)); echo "  ✓ $1"; }
 ko() { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 verif(){ if [[ "$2" == "$3" ]]; then ok "$1"; else ko "$1 (attendu=$2, obtenu=$3)"; fi; }
 
-ACTION_LOGIN="60ea92d67db1d3c472fc75a52a843c172e34bcf431"
+# L'identifiant de l'action de connexion change à chaque modification du
+# code : on l'extrait dynamiquement depuis la page de connexion.
+ACTION_LOGIN=$(curl -s $BASE/login | grep -oE 'id&quot;:&quot;[0-9a-f]+' | head -1 | sed 's/.*&quot;//')
 
 extraire_cle()  { grep -oE '\$ACTION_KEY" value="[^"]+' <<<"${1:-$(cat)}" | head -1 | sed 's/.*value="//'; }
 
@@ -47,48 +49,68 @@ C_ADM_BK=$(curl -s -D - -o /dev/null $BASE/login -X POST \
 creer_agent() { : ; } # (la création est faite par le bloc Node ci-dessous)
 
 # Les appels curl avec noms de champs dynamiques sont fragiles en bash :
-# on passe par un petit script Node pour la création d'agents et les paiements.
+# on passe par un petit script Node pour la création d'agents, l'affectation
+# des types de taxes et les paiements.
 node --input-type=module <<'NODEEOF' || true
 import fs from "node:fs";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const Database = require("better-sqlite3");
 
 const BASE = "http://localhost:3100";
-const ACTION_LOGIN = "60ea92d67db1d3c472fc75a52a843c172e34bcf431";
 let PASS = 0, FAIL = 0;
 const ok = (m) => { PASS++; console.log("  ✓ " + m); };
 const ko = (m) => { FAIL++; console.log("  ✗ " + m); };
+
+const db = new Database("data/app.db");
 
 async function get(url, cookie) {
   const r = await fetch(BASE + url, { headers: cookie ? { cookie } : {} });
   return { t: await r.text(), s: r.status, h: r.headers };
 }
 
-function champs(html) {
-  const cle = html.match(/\$ACTION_KEY" value="([^"]+)"/)?.[1];
-  const refs = [...html.matchAll(/name="(\$ACTION_\d+:0)" value="([^"]+)"/g)]
-    .map((m) => ({ champ: m[1], valeur: m[2].replaceAll("&quot;", '"') }));
-  const dernierRef = [...html.matchAll(/name="(\$ACTION_REF_\d+)"/g)].pop()?.[1];
-  return { cle, refs, dernierRef };
+// Découvre tous les formulaires d'une page, avec ou sans arguments liés.
+function formulaires(html) {
+  const out = [];
+  for (const f of html.match(/<form\b[\s\S]*?<\/form>/g) ?? []) {
+    const m = [...f.matchAll(/name="(\$ACTION_\d+:0)" value="([^"]+)"/g)].pop();
+    if (!m) {
+      const id = f.match(/name="(\$ACTION_ID_[0-9a-f]+)"/)?.[1];
+      if (id) out.push({ html: f, id });
+      continue;
+    }
+    out.push({
+      html: f,
+      cle: f.match(/\$ACTION_KEY" value="([^"]+)"/)?.[1],
+      ref: [...f.matchAll(/name="(\$ACTION_REF_\d+)"/g)].pop()?.[1],
+      champ: m[1],
+      valeur: m[2].replaceAll("&quot;", '"'),
+    });
+  }
+  return out;
 }
 
 async function posterAction(url, cookie, f, donnees) {
   const fd = new FormData();
-  if (f.dernierRef) fd.append(f.dernierRef, "");
-  const d = f.refs.at(-1);
-  const num = d.champ.split(":")[0].slice(1); // $ACTION_2 → ACTION_2... format name
-  fd.append(d.champ, d.valeur);
-  fd.append(d.champ.replace(":0", ":1"), "[{}]");
-  fd.append("$ACTION_KEY", f.cle);
-  for (const [k, v] of Object.entries(donnees)) fd.append(k, String(v));
+  if (f.id) fd.append(f.id, "");
+  if (f.ref) fd.append(f.ref, "");
+  if (f.champ) {
+    fd.append(f.champ, f.valeur);
+    fd.append(f.champ.replace(":0", ":1"), "[{}]");
+  }
+  if (f.cle) fd.append("$ACTION_KEY", f.cle);
+  for (const [k, v] of Object.entries(donnees)) {
+    for (const item of Array.isArray(v) ? v : [v]) fd.append(k, String(item));
+  }
   const r = await fetch(BASE + url, { method: "POST", body: fd, headers: { cookie }, redirect: "manual" });
   return { s: r.status, loc: r.headers.get("location"), h: r.headers, t: await r.text() };
 }
 
 async function connecter(identifiant, motDePasse) {
   const page = await get("/login");
-  const f = champs(page.t);
+  const f = formulaires(page.t).find((x) => x.html.includes('name="identifiant"')) ?? formulaires(page.t)[0];
   const r = await posterAction("/login", "", f, { identifiant, mot_de_passe: motDePasse });
-  const sc = r.h.get("set-cookie");
-  const cookie = sc?.split(";")[0];
+  const cookie = r.h.get("set-cookie")?.split(";")[0];
   return { cookie, location: r.loc, statut: r.s };
 }
 
@@ -101,22 +123,40 @@ if (admBk.cookie?.startsWith("session=")) ok("admin Bouaké connecté"); else ko
 // --- création des agents ---
 async function creerAgent(cookieAdmin, nom) {
   const page = await get("/admin/agents", cookieAdmin);
-  const f = champs(page.t);
+  const f = formulaires(page.t).find((x) => x.html.includes('name="nom_complet"'));
+  if (!f) return null;
   const r = await posterAction("/admin/agents", cookieAdmin, f, { nom_complet: nom });
   const m = r.t.match(/"compteCree":\{"nomComplet":"[^"]*","mairie":"[^"]*","identifiant":"([^"]*)","codePin":"(\d+)"/);
   return m ? { identifiant: m[1], pin: m[2] } : null;
 }
+
+// Un agent fraîchement créé ne voit AUCUN type de taxe tant que l'admin ne
+// lui en a pas confié : on reproduit ce flux avant les paiements.
+async function confierType(cookieAdmin, identifiantAgent, typeTaxeId) {
+  const agentId = db.prepare("SELECT id FROM agents WHERE identifiant = ?").get(identifiantAgent)?.id;
+  if (!agentId) return false;
+  const page = await get(`/admin/agents/${agentId}`, cookieAdmin);
+  const f = formulaires(page.t).find((x) => x.html.includes('name="types"'));
+  if (!f) return false;
+  const r = await posterAction(`/admin/agents/${agentId}`, cookieAdmin, f,
+    { agent_id: agentId, types: [String(typeTaxeId)] });
+  return r.s === 200 || r.s === 303;
+}
+
 const agBm = await creerAgent(admBm.cookie, "Test Kouassi");
 const agBk = await creerAgent(admBk.cookie, "Test Awa");
 if (agBm) ok(`Agent Béoumi créé : ${agBm.identifiant} / PIN ${agBm.pin}`); else ko("création agent Béoumi");
 if (agBk) ok(`Agent Bouaké créé : ${agBk.identifiant} / PIN ${agBk.pin}`); else ko("création agent Bouaké");
+
+(await confierType(admBm.cookie, agBm?.identifiant, 1)) ? ok("type « marché » confié à l'agent Béoumi") : ko("affectation type Béoumi");
+(await confierType(admBk.cookie, agBk?.identifiant, 4)) ? ok("type « marché » confié à l'agent Bouaké") : ko("affectation type Bouaké");
 
 // --- première connexion : changement de mot de passe obligatoire ---
 async function premierLoginEtChangement(c) {
   const l1 = await connecter(c.identifiant, c.pin);
   if (!/changer-mdp/.test(l1.location ?? "")) return ko("redirection /changer-mdp absente pour " + c.identifiant), null;
   const page = await get("/changer-mdp", l1.cookie);
-  const f = champs(page.t);
+  const f = formulaires(page.t)[0];
   const r = await posterAction("/changer-mdp", l1.cookie, f, { nouveau: "nouveau123", confirmation: "nouveau123" });
   return r.loc;
 }
@@ -131,7 +171,8 @@ retBk === "/agent" ? ok(`${agBk.identifiant} a personnalisé son mot de passe �
 async function payer(cookieAgent, typeId, contribuableId, montant) {
   const page = await get(`/agent/collecte/${typeId}`, cookieAgent);
   if (page.s !== 200) return { erreur: "page collecte " + page.s };
-  const f = champs(page.t);
+  const f = formulaires(page.t).find((x) => x.html.includes('name="type_taxe_id"'));
+  if (!f) return { erreur: "formulaire de paiement introuvable" };
   const r = await posterAction(`/agent/collecte/${typeId}`, cookieAgent, f,
     { type_taxe_id: typeId, contribuable_id: contribuableId, montant, latitude: "", longitude: "" });
   const m = r.t.match(/recuId&quot;:(\d+)|recuId":(\d+)/);
@@ -140,8 +181,8 @@ async function payer(cookieAgent, typeId, contribuableId, montant) {
 const sessBm = await connecter(agBm.identifiant, "nouveau123");
 const sessBk = await connecter(agBk.identifiant, "nouveau123");
 
-// Types après seed : Béoumi marché = id 1, contribuable MT-000003 = id 3
-//                   Bouaké marché = id 4, contribuable MT-000005 = id 5
+// Types après seed : Béoumi marché = id 1, contribuable MT-0003 = id 3
+//                   Bouaké marché = id 4, contribuable MT-0005 = id 5
 const pBm = await payer(sessBm.cookie, 1, 3, 1000);
 /recu\/(\d+)/.test(pBm.recu ?? "") ? ok(`Paiement Béoumi enregistré (${pBm.recu})`) : ko("paiement Béoumi : " + JSON.stringify(pBm));
 const pBk = await payer(sessBk.cookie, 4, 5, 1500);

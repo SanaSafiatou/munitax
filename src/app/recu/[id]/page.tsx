@@ -165,7 +165,7 @@ export default async function PageRecu(props: PageProps<"/recu/[id]">) {
         {!enLigne && (
           <>
             <a
-              href={`sms:${p.contribuable_telephone ? `+237${p.contribuable_telephone}` : ""}?&body=${encodeURIComponent(texteSms)}`}
+              href={`sms:${p.contribuable_telephone ? `+225${p.contribuable_telephone}` : ""}?&body=${encodeURIComponent(texteSms)}`}
               className="btn-primaire mt-6 w-full py-3"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">

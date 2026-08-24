@@ -180,11 +180,17 @@ export function nomMairie(mairieId: number | null | undefined): string {
   );
 }
 
-/** Normalise un numéro saisi : chiffres uniquement, indicatif 237 retiré. */
+/** Normalise un numéro saisi : chiffres uniquement, indicatif retiré
+ * (+225 Côte d'Ivoire ; l'ancien +237 reste toléré pour compatibilité). */
 export function normaliserTelephone(saisie: string): string {
   let chiffres = saisie.replaceAll(/\D/g, "");
-  if (chiffres.length > 9 && chiffres.startsWith("237")) {
-    chiffres = chiffres.slice(3);
+  if (chiffres.length > 9) {
+    for (const indicatif of ["225", "237"]) {
+      if (chiffres.startsWith(indicatif)) {
+        chiffres = chiffres.slice(3);
+        break;
+      }
+    }
   }
   return chiffres;
 }

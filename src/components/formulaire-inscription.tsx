@@ -60,7 +60,7 @@ export default function FormulaireInscription({
           autoComplete="tel"
           inputMode="tel"
           className="champ"
-          placeholder="ex : 690 12 34 56"
+          placeholder="ex : 01 02 03 04 05"
         />
       </div>
 

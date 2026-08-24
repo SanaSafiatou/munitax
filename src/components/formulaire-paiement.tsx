@@ -502,7 +502,7 @@ function ChoixContribuable({
             <p className="font-semibold text-slate-900">{choisi.nom_complet}</p>
             <p className="font-mono text-xs text-emerald-700">{choisi.code}</p>
             {choisi.telephone && (
-              <p className="text-xs text-slate-500">+237 {choisi.telephone}</p>
+              <p className="text-xs text-slate-500">+225 {choisi.telephone}</p>
             )}
           </div>
           <button
@@ -534,7 +534,7 @@ function ChoixContribuable({
                   lancerRecherche();
                 }
               }}
-              placeholder="Code (MT-000001) ou nom…"
+              placeholder="Code (MT-0001) ou nom…"
               className="champ flex-1"
               aria-label="Rechercher un contribuable"
             />
@@ -616,7 +616,7 @@ function ChoixContribuable({
               type="tel"
               inputMode="tel"
               className="champ"
-              placeholder="690 12 34 56 — laissez vide si le contribuable n'en a pas"
+              placeholder="01 02 03 04 05 — laissez vide si le contribuable n'en a pas"
             />
           </div>
           {creationErreur && (

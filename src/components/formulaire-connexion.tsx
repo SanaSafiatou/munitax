@@ -24,7 +24,7 @@ export default function FormulaireConnexion() {
           required
           autoCapitalize="none"
           className="champ"
-          placeholder="ex : agent1 ou 690 12 34 56"
+          placeholder="ex : agent1 ou 01 02 03 04 05"
         />
       </div>
       <div>

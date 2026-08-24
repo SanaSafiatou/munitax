@@ -110,7 +110,7 @@ const pageInsc = await get("/inscription-mairie");
 const fInsc = formulaires(pageInsc.t)[0];
 await posterAction("/inscription-mairie", "", fInsc, {
   nom: "Demo-Attente", responsable: "Mme Diarra",
-  contact: "+237 75 55 55 55", admin_nom: "Grace Diarra",
+  contact: "+225 75 55 55 55", admin_nom: "Grace Diarra",
 });
 const attente = db.prepare("SELECT id, statut FROM mairies WHERE nom='Demo-Attente'").get();
 attente?.statut === "en_attente"
@@ -209,7 +209,7 @@ const retour = await get("/super", cImp);
 console.log("== 7. Hors ligne : déduplication uuid_client ==");
 const agBm = await connecter("agent1", "agent123");
 const typeMarche = db.prepare("SELECT id FROM types_taxe WHERE mairie_id=(SELECT id FROM mairies WHERE nom='Béoumi') AND nom='Taxe de marché'").get().id;
-const contrib = db.prepare("SELECT id FROM contribuables WHERE code='MT-000001'").get().id;
+const contrib = db.prepare("SELECT id FROM contribuables WHERE code='MT-0001'").get().id;
 const colPage = await get(`/agent/collecte/${typeMarche}`, agBm.cookie);
 const totalAvant = db.prepare("SELECT COUNT(*) n FROM paiements").get().n;
 

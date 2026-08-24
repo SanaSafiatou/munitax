@@ -31,7 +31,7 @@ export default async function PageCarteContribuable(
     notFound();
   }
 
-  const texteQr = c.code ?? `MT-${String(c.id).padStart(6, "0")}`;
+  const texteQr = c.code ?? `MT-${String(c.id).padStart(4, "0")}`;
   const dataUrl = await QRCode.toDataURL(texteQr, {
     margin: 1,
     width: 320,
@@ -61,7 +61,7 @@ export default async function PageCarteContribuable(
               {c.nom_complet}
             </p>
             {c.telephone && (
-              <p className="text-xs text-slate-500">+237 {c.telephone}</p>
+              <p className="text-xs text-slate-500">+225 {c.telephone}</p>
             )}
           </div>
         </div>

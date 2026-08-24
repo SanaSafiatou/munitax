@@ -176,7 +176,7 @@ export async function creerCompteTesteur(
   if (telephone.length < 8 || telephone.length > 15) {
     return {
       erreur:
-        "Numéro de téléphone invalide. Exemple : 690 12 34 56 ou +237 690 12 34 56.",
+        "Numéro de téléphone invalide. Exemple : 01 02 03 04 05 ou +225 01 02 03 04 05.",
     };
   }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -214,7 +214,7 @@ export async function creerCompteTesteur(
     .run(nomComplet, telephone, email || null, hashSync(motDePasse, 10), mairieId, Date.now());
   const id = Number(info.lastInsertRowid);
   db.prepare("UPDATE contribuables SET code = ? WHERE id = ?").run(
-    `MT-${String(id).padStart(6, "0")}`,
+    `MT-${String(id).padStart(4, "0")}`,
     id,
   );
 

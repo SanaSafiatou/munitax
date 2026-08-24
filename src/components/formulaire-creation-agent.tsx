@@ -45,13 +45,13 @@ export default function FormulaireCreationAgent() {
               name="telephone"
               type="tel"
               className="champ"
-              placeholder="+237 …"
+              placeholder="+225 …"
             />
           </div>
         </div>
         <p className="-mt-1 text-xs text-slate-400">
           L&apos;agent est rattaché automatiquement à votre mairie. Son
-          identifiant et son code PIN à 6 chiffres sont générés puis affichés
+          identifiant et son code PIN à 4 chiffres sont générés puis affichés
           une seule fois ; il devra choisir son propre mot de passe à la
           première connexion.
         </p>

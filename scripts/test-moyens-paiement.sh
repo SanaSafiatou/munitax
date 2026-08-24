@@ -13,7 +13,9 @@ ok() { PASS=$((PASS+1)); echo "  ✓ $1"; }
 ko() { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 verif(){ if [[ "$2" == "$3" ]]; then ok "$1"; else ko "$1 (attendu=$2, obtenu=$3)"; fi; }
 
-ACTION_LOGIN="60ea92d67db1d3c472fc75a52a843c172e34bcf431"
+# L'identifiant de l'action de connexion change à chaque modification du
+# code : on l'extrait dynamiquement depuis la page de connexion.
+ACTION_LOGIN=$(curl -s $BASE/login | grep -oE 'id&quot;:&quot;[0-9a-f]+' | head -1 | sed 's/.*&quot;//')
 
 echo "== 0. Réinitialisation et état initial =="
 npm run seed --silent >/dev/null 2>&1 && ok "base réinitialisée"

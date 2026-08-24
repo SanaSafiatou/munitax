@@ -44,17 +44,12 @@ export function genererIdentifiant(
   return candidat;
 }
 
-/** Code PIN à 6 chiffres pour la première connexion d'un agent. */
+/** Code PIN à 4 chiffres pour la première connexion d'un agent. */
 export function genererCodePin(): string {
-  return String(Math.floor(100_000 + Math.random() * 900_000));
+  return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-/** Mot de passe lisible pour un administrateur créé par le super-admin. */
+/** Code provisoire à 4 chiffres pour un administrateur créé par le super-admin. */
 export function genererMotDePasse(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 8; i += 1) {
-    s += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return s;
+  return genererCodePin();
 }

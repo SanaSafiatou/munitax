@@ -44,7 +44,7 @@ export type EtatCreationContribuable = {
 
 /**
  * Création d'une fiche contribuable sur le terrain : le nom suffit,
- * le téléphone est facultatif. Un code unique (MT-000042) est généré.
+ * le téléphone est facultatif. Un code unique (MT-0042) est généré.
  */
 export async function creerContribuable(
   _etatPrecedent: EtatCreationContribuable,
@@ -67,7 +67,7 @@ export async function creerContribuable(
     )
     .run(nomComplet, telephone || null, session.mairieId, Date.now());
   const id = Number(info.lastInsertRowid);
-  const code = `MT-${String(id).padStart(6, "0")}`;
+  const code = `MT-${String(id).padStart(4, "0")}`;
   db.prepare("UPDATE contribuables SET code = ? WHERE id = ?").run(code, id);
 
   return {
