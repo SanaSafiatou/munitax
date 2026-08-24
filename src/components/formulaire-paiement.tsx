@@ -63,9 +63,7 @@ export default function FormulairePaiement({
   const [essai, setEssai] = useState(0);
   const mobilePossible = operateurs.length > 0;
   const [moyen, setMoyen] = useState<"cash" | "mobile">("cash");
-  const [operateur, setOperateur] = useState(
-    operateurs[0]?.code ?? "",
-  );
+  const [operateur, setOperateur] = useState(operateurs[0]?.code ?? "");
   const [enLigne, setEnLigne] = useState(true);
   const [recuHorsLigne, setRecuHorsLigne] = useState<RecuHorsLigne | null>(
     null,
@@ -95,11 +93,11 @@ export default function FormulairePaiement({
         rejeter(new Error("non disponible"));
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        resoudre,
-        rejeter,
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
-      );
+      navigator.geolocation.getCurrentPosition(resoudre, rejeter, {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 30000,
+      });
     })
       .then((pos) => {
         if (!annule)
@@ -110,8 +108,7 @@ export default function FormulairePaiement({
           });
       })
       .catch((err: GeolocationPositionError | Error) => {
-        if (!annule)
-          setGps({ etat: "erreur", message: messageErreurGps(err) });
+        if (!annule) setGps({ etat: "erreur", message: messageErreurGps(err) });
       });
     return () => {
       annule = true;
@@ -124,69 +121,7 @@ export default function FormulairePaiement({
   };
 
   return (
-    <form
-      action={action}
-      onSubmit={(e) => {
-        // Hors ligne : on n'envoie rien au serveur. Le paiement est empilé
-        // sur l'appareil avec un identifiant unique ; il sera synchronisé
-        // automatiquement (sans doublon) au retour du réseau.
-        if (navigator.onLine) return;
-        e.preventDefault();
-        if (!contribuable) return;
-        const fd = new FormData(e.currentTarget);
-        const montant = Math.round(Number(fd.get("montant")));
-        if (!Number.isFinite(montant) || montant <= 0) return;
-        const uuid = nouvelUuid();
-        ajouterALaFile({
-          uuid,
-          dateHeure: Date.now(),
-          nomTaxe,
-          contribuableNom: contribuable.nom_complet,
-          contribuableCode: contribuable.code,
-          montant,
-          moyenLabel: "Espèces",
-          champs: {
-            type_taxe_id: String(typeId),
-            contribuable_id: String(contribuable.id),
-            montant: String(montant),
-            latitude: String(fd.get("latitude") ?? ""),
-            longitude: String(fd.get("longitude") ?? ""),
-            moyen: "cash",
-            operateur: "",
-            uuid_client: uuid,
-          },
-        });
-        setRecuHorsLigne({
-          uuid,
-          dateHeure: Date.now(),
-          montant,
-        });
-      }}
-      className="space-y-4"
-    >
-      <input type="hidden" name="type_taxe_id" value={typeId} />
-      <input
-        type="hidden"
-        name="contribuable_id"
-        value={contribuable?.id ?? ""}
-      />
-      <input type="hidden" name="moyen" value={moyen} />
-      <input
-        type="hidden"
-        name="operateur"
-        value={moyen === "mobile" ? operateur : ""}
-      />
-      <input
-        type="hidden"
-        name="latitude"
-        value={gps.etat === "ok" ? gps.lat : ""}
-      />
-      <input
-        type="hidden"
-        name="longitude"
-        value={gps.etat === "ok" ? gps.lng : ""}
-      />
-
+    <div className="space-y-4">
       {/* Récapitulatif taxe */}
       <div className="carte p-4 text-sm">
         <p className="text-xs uppercase tracking-wide text-slate-400">
@@ -198,256 +133,344 @@ export default function FormulairePaiement({
         )}
       </div>
 
-      {/* Contribuable */}
+      {/* Contribuable : hors du formulaire de paiement (un <form> ne doit
+          pas être imbriqué dans un autre ; sinon le submit de création
+          remonte au onSubmit du paiement et peut être annulé en silence). */}
       <ChoixContribuable
         choisi={contribuable}
         onChoisi={(c) => setContribuable(c)}
       />
 
-      {/* Montant modifiable */}
-      <div>
-        <label htmlFor="montant" className="etiquette">
-          Montant encaissé (FCFA)
-        </label>
+      <form
+        action={action}
+        onSubmit={(e) => {
+          // Hors ligne : on n'envoie rien au serveur. Le paiement est empilé
+          // sur l'appareil avec un identifiant unique ; il sera synchronisé
+          // automatiquement (sans doublon) au retour du réseau.
+          if (navigator.onLine) return;
+          e.preventDefault();
+          if (!contribuable) return;
+          const fd = new FormData(e.currentTarget);
+          const montant = Math.round(Number(fd.get("montant")));
+          if (!Number.isFinite(montant) || montant <= 0) return;
+          const uuid = nouvelUuid();
+          ajouterALaFile({
+            uuid,
+            dateHeure: Date.now(),
+            nomTaxe,
+            contribuableNom: contribuable.nom_complet,
+            contribuableCode: contribuable.code,
+            montant,
+            moyenLabel: "Espèces",
+            champs: {
+              type_taxe_id: String(typeId),
+              contribuable_id: String(contribuable.id),
+              montant: String(montant),
+              latitude: String(fd.get("latitude") ?? ""),
+              longitude: String(fd.get("longitude") ?? ""),
+              moyen: "cash",
+              operateur: "",
+              uuid_client: uuid,
+            },
+          });
+          setRecuHorsLigne({
+            uuid,
+            dateHeure: Date.now(),
+            montant,
+          });
+        }}
+        className="space-y-4"
+      >
+        <input type="hidden" name="type_taxe_id" value={typeId} />
         <input
-          id="montant"
-          name="montant"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          step={1}
-          required
-          defaultValue={montantFixe ?? ""}
-          className="champ text-lg font-semibold"
+          type="hidden"
+          name="contribuable_id"
+          value={contribuable?.id ?? ""}
         />
-        {montantFixe !== null ? (
-          <p className="mt-1 text-xs text-slate-400">
-            Tarif habituel : <strong>{montantFmt(montantFixe)}</strong> — le
-            montant est modifiable (plusieurs étals, régularisation…).
-          </p>
-        ) : (
-          <p className="mt-1 text-xs text-slate-400">
-            Taxe à montant libre : saisissez le montant convenu selon la
-            surface occupée.
-          </p>
-        )}
-      </div>
+        <input type="hidden" name="moyen" value={moyen} />
+        <input
+          type="hidden"
+          name="operateur"
+          value={moyen === "mobile" ? operateur : ""}
+        />
+        <input
+          type="hidden"
+          name="latitude"
+          value={gps.etat === "ok" ? gps.lat : ""}
+        />
+        <input
+          type="hidden"
+          name="longitude"
+          value={gps.etat === "ok" ? gps.lng : ""}
+        />
 
-      {/* Moyen de paiement : cash ou mobile money */}
-      <fieldset className="carte space-y-3 p-4 text-sm">
-        <legend className="etiquette !mb-0">Moyen de paiement</legend>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setMoyen("cash")}
-            aria-pressed={moyen === "cash"}
-            className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-semibold ring-1 transition-colors ${
-              moyen === "cash"
-                ? "bg-emerald-700 text-white ring-emerald-700"
-                : "bg-white text-slate-600 ring-slate-300 hover:bg-slate-50"
-            }`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10.5h8m-9 6h10M4 6.5h16v11H4z" />
-            </svg>
-            Espèces
-          </button>
-          {mobilePossible && (
-            <button
-              type="button"
-              onClick={() => setMoyen("mobile")}
-              disabled={!enLigne}
-              aria-pressed={moyen === "mobile"}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-semibold ring-1 transition-colors ${
-                moyen === "mobile"
-                  ? "bg-emerald-700 text-white ring-emerald-700"
-                  : "bg-white text-slate-600 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              }`}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
-                <path strokeLinecap="round" d="M11 18.5h2" />
-              </svg>
-              Mobile Money
-            </button>
+        {/* Montant modifiable */}
+        <div>
+          <label htmlFor="montant" className="etiquette">
+            Montant encaissé (FCFA)
+          </label>
+          <input
+            id="montant"
+            name="montant"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            required
+            defaultValue={montantFixe ?? ""}
+            className="champ text-lg font-semibold"
+          />
+          {montantFixe !== null ? (
+            <p className="mt-1 text-xs text-slate-400">
+              Tarif habituel : <strong>{montantFmt(montantFixe)}</strong> — le
+              montant est modifiable (plusieurs étals, régularisation…).
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-400">
+              Taxe à montant libre : saisissez le montant convenu selon la
+              surface occupée.
+            </p>
           )}
         </div>
 
-        {moyen === "cash" && (
-          <p className="text-xs text-slate-500">
-            {enLigne
-              ? "Le contribuable remet le montant en espèces à l'agent."
-              : "Hors ligne : le paiement en espèces est enregistré sur l'appareil, puis synchronisé automatiquement."}
-          </p>
-        )}
-
-        {mobilePossible && moyen === "mobile" && (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {operateurs.map((o) => (
-                <button
-                  key={o.code}
-                  type="button"
-                  onClick={() => setOperateur(o.code)}
-                  aria-pressed={operateur === o.code}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 transition-colors ${
-                    operateur === o.code
-                      ? "bg-emerald-100 text-emerald-800 ring-emerald-400"
-                      : "bg-white text-slate-500 ring-slate-300 hover:bg-slate-50"
-                  }`}
+        {/* Moyen de paiement : cash ou mobile money */}
+        <fieldset className="carte space-y-3 p-4 text-sm">
+          <legend className="etiquette !mb-0">Moyen de paiement</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMoyen("cash")}
+              aria-pressed={moyen === "cash"}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-semibold ring-1 transition-colors ${
+                moyen === "cash"
+                  ? "bg-emerald-700 text-white ring-emerald-700"
+                  : "bg-white text-slate-600 ring-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8 10.5h8m-9 6h10M4 6.5h16v11H4z"
+                />
+              </svg>
+              Espèces
+            </button>
+            {mobilePossible && (
+              <button
+                type="button"
+                onClick={() => setMoyen("mobile")}
+                disabled={!enLigne}
+                aria-pressed={moyen === "mobile"}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 font-semibold ring-1 transition-colors ${
+                  moyen === "mobile"
+                    ? "bg-emerald-700 text-white ring-emerald-700"
+                    : "bg-white text-slate-600 ring-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-5 w-5"
                 >
-                  {o.nom}
-                </button>
-              ))}
+                  <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+                  <path strokeLinecap="round" d="M11 18.5h2" />
+                </svg>
+                Mobile Money
+              </button>
+            )}
+          </div>
+
+          {moyen === "cash" && (
+            <p className="text-xs text-slate-500">
+              {enLigne
+                ? "Le contribuable remet le montant en espèces à l'agent."
+                : "Hors ligne : le paiement en espèces est enregistré sur l'appareil, puis synchronisé automatiquement."}
+            </p>
+          )}
+
+          {mobilePossible && moyen === "mobile" && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {operateurs.map((o) => (
+                  <button
+                    key={o.code}
+                    type="button"
+                    onClick={() => setOperateur(o.code)}
+                    aria-pressed={operateur === o.code}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 transition-colors ${
+                      operateur === o.code
+                        ? "bg-emerald-100 text-emerald-800 ring-emerald-400"
+                        : "bg-white text-slate-500 ring-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    {o.nom}
+                  </button>
+                ))}
+              </div>
+              <p className="rounded-xl bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-800 ring-1 ring-sky-200">
+                Une demande de paiement est envoyée au téléphone du
+                contribuable, qui confirme sur son téléphone (ou compose le code
+                fourni). Mode démonstration : la demande est validée
+                immédiatement et une référence est enregistrée sur la quittance
+                — aucun débit réel.
+              </p>
             </div>
-            <p className="rounded-xl bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-800 ring-1 ring-sky-200">
-              Une demande de paiement est envoyée au téléphone du contribuable,
-              qui confirme sur son téléphone (ou compose le code fourni).
-              Mode démonstration : la demande est validée immédiatement et une
-              référence est enregistrée sur la quittance — aucun débit réel.
+          )}
+        </fieldset>
+
+        {/* GPS automatique */}
+        <div className="carte p-4 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <p className="flex items-start gap-2">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                  gps.etat === "ok"
+                    ? "text-emerald-600"
+                    : gps.etat === "erreur"
+                      ? "text-red-500"
+                      : "text-slate-400 animate-pulse"
+                }`}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 21s-7-5.5-7-11a7 7 0 1 1 14 0c0 5.5-7 11-7 11z"
+                />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              <span>
+                {gps.etat === "en-cours" && "Recherche du signal GPS…"}
+                {gps.etat === "ok" && (
+                  <>
+                    <span className="font-medium text-emerald-700">
+                      Position capturée automatiquement
+                    </span>
+                    <span className="block font-mono text-xs text-slate-500">
+                      {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
+                    </span>
+                  </>
+                )}
+                {gps.etat === "erreur" && (
+                  <span className="text-red-600">{gps.message}</span>
+                )}
+              </span>
+            </p>
+            {gps.etat !== "en-cours" && (
+              <button
+                type="button"
+                onClick={relancer}
+                className="btn-secondaire shrink-0 px-3 py-1.5 text-xs"
+              >
+                Actualiser
+              </button>
+            )}
+          </div>
+          <p className="mt-1 pl-7 text-xs text-slate-500">
+            Le lieu du prélèvement est enregistré automatiquement avec la
+            quittance.
+          </p>
+        </div>
+
+        {recuHorsLigne && (
+          <div
+            role="status"
+            className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-300"
+          >
+            <p className="text-sm font-bold text-emerald-800">
+              Quittance émise — enregistrée sur l&apos;appareil
+            </p>
+            <dl className="mt-2 space-y-1 text-sm text-emerald-900">
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">Contribuable</dt>
+                <dd className="font-semibold">{contribuable?.nom_complet}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">Taxe</dt>
+                <dd>{nomTaxe}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">Montant</dt>
+                <dd className="font-bold">
+                  {montantFmt(recuHorsLigne.montant)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-emerald-700">Référence provisoire</dt>
+                <dd className="font-mono text-xs">
+                  HORS-LIGNE-{recuHorsLigne.uuid.slice(0, 8).toUpperCase()}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs leading-relaxed text-emerald-700">
+              Le reçu définitif (référence REC-…) sera généré dès la
+              synchronisation, sans aucune action de votre part.
             </p>
           </div>
         )}
-      </fieldset>
 
-      {/* GPS automatique */}
-      <div className="carte p-4 text-sm">
-        <div className="flex items-start justify-between gap-3">
-          <p className="flex items-start gap-2">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className={`mt-0.5 h-5 w-5 shrink-0 ${
-                gps.etat === "ok"
-                  ? "text-emerald-600"
-                  : gps.etat === "erreur"
-                    ? "text-red-500"
-                    : "text-slate-400 animate-pulse"
-              }`}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 21s-7-5.5-7-11a7 7 0 1 1 14 0c0 5.5-7 11-7 11z"
-              />
-              <circle cx="12" cy="10" r="2.5" />
-            </svg>
-            <span>
-              {gps.etat === "en-cours" && "Recherche du signal GPS…"}
-              {gps.etat === "ok" && (
-                <>
-                  <span className="font-medium text-emerald-700">
-                    Position capturée automatiquement
-                  </span>
-                  <span className="block font-mono text-xs text-slate-500">
-                    {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
-                  </span>
-                </>
-              )}
-              {gps.etat === "erreur" && (
-                <span className="text-red-600">{gps.message}</span>
-              )}
-            </span>
-          </p>
-          {gps.etat !== "en-cours" && (
-            <button
-              type="button"
-              onClick={relancer}
-              className="btn-secondaire shrink-0 px-3 py-1.5 text-xs"
-            >
-              Actualiser
-            </button>
-          )}
-        </div>
-        <p className="mt-1 pl-7 text-xs text-slate-500">
-          Le lieu du prélèvement est enregistré automatiquement avec la
-          quittance.
-        </p>
-      </div>
-
-      {recuHorsLigne && (
-        <div
-          role="status"
-          className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-300"
-        >
-          <p className="text-sm font-bold text-emerald-800">
-            Quittance émise — enregistrée sur l&apos;appareil
-          </p>
-          <dl className="mt-2 space-y-1 text-sm text-emerald-900">
-            <div className="flex justify-between gap-4">
-              <dt className="text-emerald-700">Contribuable</dt>
-              <dd className="font-semibold">{contribuable?.nom_complet}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-emerald-700">Taxe</dt>
-              <dd>{nomTaxe}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-emerald-700">Montant</dt>
-              <dd className="font-bold">{montantFmt(recuHorsLigne.montant)}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-emerald-700">Référence provisoire</dt>
-              <dd className="font-mono text-xs">
-                HORS-LIGNE-{recuHorsLigne.uuid.slice(0, 8).toUpperCase()}
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-2 text-xs leading-relaxed text-emerald-700">
-            Le reçu définitif (référence REC-…) sera généré dès la
-            synchronisation, sans aucune action de votre part.
-          </p>
-        </div>
-      )}
-
-      {etat.recuId && (
-        <div
-          role="status"
-          className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200"
-        >
-          <p className="text-sm font-bold text-emerald-800">
-            Paiement enregistré — quittance disponible.
-          </p>
-          <Link
-            href={`/recu/${etat.recuId}`}
-            className="mt-2 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+        {etat.recuId && (
+          <div
+            role="status"
+            className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-200"
           >
-            Voir / imprimer la quittance
-          </Link>
-        </div>
-      )}
-
-      {etat.erreur && (
-        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">
-          {etat.erreur}
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={enCours || !contribuable}
-        className="btn-primaire w-full py-3.5 text-base disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {enCours ? (
-          <>
-            <Spinner />{" "}
-            {moyen === "mobile" ? "Envoi de la demande…" : "Enregistrement…"}
-          </>
-        ) : contribuable ? (
-          moyen === "mobile" ? (
-            `Demander le paiement ${operateurs.find((o) => o.code === operateur)?.nom ?? ""}`.trim()
-          ) : enLigne ? (
-            "Valider le paiement"
-          ) : (
-            "Enregistrer hors ligne"
-          )
-        ) : (
-          "Sélectionnez d'abord le contribuable"
+            <p className="text-sm font-bold text-emerald-800">
+              Paiement enregistré — quittance disponible.
+            </p>
+            <Link
+              href={`/recu/${etat.recuId}`}
+              className="mt-2 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+            >
+              Voir / imprimer la quittance
+            </Link>
+          </div>
         )}
-      </button>
-    </form>
+
+        {etat.erreur && (
+          <p
+            role="alert"
+            className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"
+          >
+            {etat.erreur}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={enCours || !contribuable}
+          className="btn-primaire w-full py-3.5 text-base disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {enCours ? (
+            <>
+              <Spinner />{" "}
+              {moyen === "mobile" ? "Envoi de la demande…" : "Enregistrement…"}
+            </>
+          ) : contribuable ? (
+            moyen === "mobile" ? (
+              `Demander le paiement ${operateurs.find((o) => o.code === operateur)?.nom ?? ""}`.trim()
+            ) : enLigne ? (
+              "Valider le paiement"
+            ) : (
+              "Enregistrer hors ligne"
+            )
+          ) : (
+            "Sélectionnez d'abord le contribuable"
+          )}
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -462,14 +485,24 @@ function ChoixContribuable({
   const [requete, setRequete] = useState("");
   const [resultats, setResultats] = useState<ContribuableChoisi[]>([]);
   const [rechercheEnCours, setRechercheEnCours] = useState(false);
+  const [rechercheErreur, setRechercheErreur] = useState<string | undefined>();
   const [modeCreation, setModeCreation] = useState(false);
   const [creationEnCours, setCreationEnCours] = useState(false);
   const [creationErreur, setCreationErreur] = useState<string | undefined>();
+  const [creationSucces, setCreationSucces] = useState<string | undefined>();
 
   async function lancerRecherche() {
     setRechercheEnCours(true);
+    setRechercheErreur(undefined);
     try {
       setResultats(await rechercherContribuables(requete));
+    } catch {
+      setResultats([]);
+      setRechercheErreur(
+        navigator.onLine
+          ? "La recherche a échoué. Réessayez."
+          : "Recherche indisponible hors ligne.",
+      );
     } finally {
       setRechercheEnCours(false);
     }
@@ -478,14 +511,32 @@ function ChoixContribuable({
   async function soumettreCreation(fd: FormData) {
     setCreationEnCours(true);
     setCreationErreur(undefined);
+    setCreationSucces(undefined);
     try {
+      if (!navigator.onLine) {
+        setCreationErreur(
+          "Création impossible hors ligne : reconnectez-vous à Internet. (Le paiement en espèces, lui, reste enregistré sur l'appareil.)",
+        );
+        return;
+      }
       const res = await creerContribuable({}, fd);
       if (res.contribuable) {
         onChoisi(res.contribuable);
         setModeCreation(false);
+        setRequete("");
+        setResultats([]);
+        setCreationSucces(
+          `Fiche créée avec succès — code ${res.contribuable.code}.`,
+        );
       } else {
         setCreationErreur(res.erreur ?? "Création impossible.");
       }
+    } catch {
+      setCreationErreur(
+        navigator.onLine
+          ? "Erreur inattendue lors de la création de la fiche. Réessayez."
+          : "Connexion perdue : la fiche n'a pas pu être créée.",
+      );
     } finally {
       setCreationEnCours(false);
     }
@@ -513,6 +564,14 @@ function ChoixContribuable({
             Changer
           </button>
         </div>
+        {creationSucces && (
+          <p
+            role="status"
+            className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"
+          >
+            {creationSucces}
+          </p>
+        )}
       </div>
     );
   }
@@ -574,8 +633,17 @@ function ChoixContribuable({
               ))}
             </ul>
           )}
+          {rechercheErreur && (
+            <p
+              role="alert"
+              className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200"
+            >
+              {rechercheErreur}
+            </p>
+          )}
           {requete.trim().length >= 2 &&
             !rechercheEnCours &&
+            !rechercheErreur &&
             resultats.length === 0 && (
               <p className="text-xs text-slate-500">
                 Aucun contribuable trouvé pour « {requete.trim()} ».
@@ -591,7 +659,10 @@ function ChoixContribuable({
           </button>
         </>
       ) : (
-        <form action={soumettreCreation} className="space-y-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+        <form
+          action={soumettreCreation}
+          className="space-y-3 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200"
+        >
           <div>
             <label htmlFor="c-nom" className="etiquette">
               Nom du contribuable
@@ -620,7 +691,10 @@ function ChoixContribuable({
             />
           </div>
           {creationErreur && (
-            <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200">
+            <p
+              role="alert"
+              className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200"
+            >
               {creationErreur}
             </p>
           )}
