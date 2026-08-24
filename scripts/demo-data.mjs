@@ -108,6 +108,26 @@ export const SCHEMA_SQL = `
     type_taxe_id  INTEGER NOT NULL REFERENCES types_taxe(id) ON DELETE CASCADE,
     PRIMARY KEY (agent_id, type_taxe_id)
   );
+
+  -- Messages de l'administrateur d'une mairie à ses contribuables.
+  -- Toujours rattachés à la mairie émettrice : aucune portée inter-mairies.
+  CREATE TABLE IF NOT EXISTS messages (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    mairie_id INTEGER NOT NULL REFERENCES mairies(id) ON DELETE CASCADE,
+    agent_id  INTEGER REFERENCES agents(id),
+    contenu   TEXT NOT NULL,
+    cree_le   INTEGER NOT NULL
+  );
+
+  -- Destinataires ciblés, un par contribuable ; lu_le est renseigné quand
+  -- le message a été affiché dans l'espace en ligne du contribuable.
+  CREATE TABLE IF NOT EXISTS messages_destinataires (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id      INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    contribuable_id INTEGER NOT NULL REFERENCES contribuables(id) ON DELETE CASCADE,
+    lu_le           INTEGER,
+    UNIQUE (message_id, contribuable_id)
+  );
 `;
 
 const TZ = process.env.APP_TIMEZONE || "Africa/Douala";
@@ -385,9 +405,9 @@ export function cheminBase() {
   return path.join(process.cwd(), "data", "app.db");
 }
 
-/** Code public unique d'un contribuable : MT-000042. */
+/** Code public unique d'un contribuable : MT-0042. */
 export function codeContribuable(id) {
-  return `MT-${String(id).padStart(6, "0")}`;
+  return `MT-${String(id).padStart(4, "0")}`;
 }
 
 /**
@@ -454,9 +474,11 @@ export function reinitialiserDonneesDemo(options = {}) {  fs.mkdirSync(path.dirn
  */
 export function peuplerDonneesDemo(db) {
   db.exec(`
+    DELETE FROM messages_destinataires;
+    DELETE FROM messages;
     DELETE FROM mairies_moyens_paiement;
     DELETE FROM paiements;
-    DELETE FROM sqlite_sequence WHERE name IN ('paiements','agents','contribuables','types_taxe','mairies','mairies_moyens_paiement','super_administrateurs');
+    DELETE FROM sqlite_sequence WHERE name IN ('paiements','agents','contribuables','types_taxe','mairies','mairies_moyens_paiement','super_administrateurs','messages','messages_destinataires');
     DELETE FROM agents;
     DELETE FROM contribuables;
     DELETE FROM types_taxe;
@@ -479,10 +501,10 @@ export function peuplerDonneesDemo(db) {
   );
   const beoumiId = Number(insererMairie.run(
     "Béoumi", "active", maintenant + 45 * 86_400_000,
-    "M. Kouassi N'Guessan", "+237 600 10 10 01", maintenant,
+    "M. Kouassi N'Guessan", "+225 600 10 10 01", maintenant,
   ).lastInsertRowid);
   const bouakeId = Number(insererMairie.run(
-    "Bouaké", "active", null, "Mme Aya Bamba", "+237 600 20 20 02", maintenant,
+    "Bouaké", "active", null, "Mme Aya Bamba", "+225 600 20 20 02", maintenant,
   ).lastInsertRowid);
 
   // Moyens de paiement mobile activés en mode démonstration :
@@ -503,19 +525,19 @@ export function peuplerDonneesDemo(db) {
   );
 
   insererAgent.run(
-    "Directeur Béoumi (test)", "+237 600 10 10 01", "admin.beoumi",
+    "Directeur Béoumi (test)", "+225 600 10 10 01", "admin.beoumi",
     hashSync("beoumi123", 10), "admin", beoumiId, 0, maintenant,
   );
   insererAgent.run(
-    "Directeur Bouaké (test)", "+237 600 20 20 02", "admin.bouake",
+    "Directeur Bouaké (test)", "+225 600 20 20 02", "admin.bouake",
     hashSync("bouake123", 10), "admin", bouakeId, 0, maintenant,
   );
   const agentBeoumiId = Number(insererAgent.run(
-    "Jean Mbarga (test)", "+237 690 11 22 33", "agent1",
+    "Jean Mbarga (test)", "+225 690 11 22 33", "agent1",
     hashSync("agent123", 10), "agent", beoumiId, 0, maintenant,
   ).lastInsertRowid);
   const agentBouakeId = Number(insererAgent.run(
-    "Alice Mefo (test)", "+237 677 44 55 66", "agent2",
+    "Alice Mefo (test)", "+225 677 44 55 66", "agent2",
     hashSync("agent123", 10), "agent", bouakeId, 0, maintenant,
   ).lastInsertRowid);
 

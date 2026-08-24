@@ -31,7 +31,7 @@ export type EtatCreationAgent = {
 
 /**
  * Création d'un compte agent par l'administrateur de la mairie :
- * identifiant et code PIN à 6 chiffres générés automatiquement.
+ * identifiant et code PIN à 4 chiffres générés automatiquement.
  * Le PIN est temporaire : l'agent devra le remplacer à sa première connexion.
  */
 export async function creerAgent(
@@ -342,4 +342,100 @@ export async function enregistrerTypesAgent(formData: FormData): Promise<void> {
   revalidatePath(`/admin/agents/${agentId}`);
   revalidatePath("/admin/agents");
   revalidatePath("/agent");
+}
+
+/* ======================= Messages aux contribuables ======================= */
+
+export type EtatMessage = { erreur?: string; succes?: string };
+
+const MAX_LONGUEUR_MESSAGE = 500;
+
+/**
+ * Envoie un message de l'administrateur à des contribuables DE SA SEULE
+ * mairie : le mode « tous » interroge la base filtrée par mairie_id et
+ * chaque identifiant reçu en sélection est revérifié avant insertion.
+ * Diffusion : notification dans l'espace contribuable en ligne (comptes
+ * actifs) et SMS pour les destinataires ayant un numéro renseigné.
+ */
+export async function envoyerMessage(
+  _etatPrecedent: EtatMessage,
+  formData: FormData,
+): Promise<EtatMessage> {
+  const { mairieId, id: agentId } = await exigerMairie("admin");
+
+  const contenu = String(formData.get("contenu") ?? "").trim();
+  if (contenu.length < 2) {
+    return { erreur: "Veuillez rédiger un message avant l'envoi." };
+  }
+  if (contenu.length > MAX_LONGUEUR_MESSAGE) {
+    return {
+      erreur: `Message trop long : ${MAX_LONGUEUR_MESSAGE} caractères maximum.`,
+    };
+  }
+
+  let ids: number[];
+  if (formData.get("cible") === "tous") {
+    ids = db
+      .prepare<[number], { id: number }>(
+        "SELECT id FROM contribuables WHERE mairie_id = ? AND actif = 1 ORDER BY id",
+      )
+      .all(mairieId)
+      .map((r) => r.id);
+  } else {
+    ids = formData
+      .getAll("contribuables")
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n));
+  }
+  if (ids.length === 0) {
+    return { erreur: "Aucun destinataire sélectionné." };
+  }
+
+  // Revérification systématique contre mairie_id : un identifiant forgé ou
+  // appartenant à une autre mairie est silencieusement écarté.
+  const eligible = db.prepare<[number, number], { id: number }>(
+    "SELECT id FROM contribuables WHERE id = ? AND mairie_id = ? AND actif = 1",
+  );
+  const retenus = [...new Set(ids)].filter((id) => eligible.get(id, mairieId));
+  if (retenus.length === 0) {
+    return {
+      erreur: "Aucun contribuable valide parmi les destinataires choisis.",
+    };
+  }
+
+  let messageId = 0;
+  db.transaction(() => {
+    messageId = Number(
+      db
+        .prepare(
+          "INSERT INTO messages (mairie_id, agent_id, contenu, cree_le) VALUES (?, ?, ?, ?)",
+        )
+        .run(mairieId, agentId, contenu, Date.now()).lastInsertRowid,
+    );
+    const insere = db.prepare(
+      "INSERT OR IGNORE INTO messages_destinataires (message_id, contribuable_id) VALUES (?, ?)",
+    );
+    for (const id of retenus) insere.run(messageId, id);
+  })();
+
+  const stats = db
+    .prepare<[number], { nb_sms: number | null; nb_en_ligne: number | null }>(
+      `SELECT SUM(CASE WHEN TRIM(COALESCE(c.telephone, '')) != '' THEN 1 ELSE 0 END) AS nb_sms,
+              SUM(CASE WHEN c.mot_de_passe != '' THEN 1 ELSE 0 END) AS nb_en_ligne
+       FROM messages_destinataires d
+       JOIN contribuables c ON c.id = d.contribuable_id
+       WHERE d.message_id = ?`,
+    )
+    .get(messageId)!;
+
+  revalidatePath("/admin/contribuables");
+  revalidatePath("/contribuable");
+
+  const nbSms = stats.nb_sms ?? 0;
+  const nbEnLigne = stats.nb_en_ligne ?? 0;
+  return {
+    succes: `Message envoyé à ${retenus.length} contribuable${
+      retenus.length > 1 ? "s" : ""
+    } : ${nbEnLigne} le verront dans leur espace en ligne, ${nbSms} recevront un SMS.`,
+  };
 }

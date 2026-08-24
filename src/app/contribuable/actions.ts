@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import db from "@/lib/db";
 import { exigerMairie } from "@/lib/auth";
 
@@ -61,4 +62,17 @@ export async function simulerPaiementEnLigne(
   );
 
   redirect(`/recu/${id}`);
+}
+
+/**
+ * Marque les messages de la mairie adressés à CE contribuable comme lus.
+ * Seuls les messages qui lui sont destinataires sont touchés : le compte ne
+ * peut ni marquer ceux des autres, ni ceux d'une autre mairie.
+ */
+export async function marquerMessagesLus(): Promise<void> {
+  const session = await exigerMairie("contribuable");
+  db.prepare(
+    "UPDATE messages_destinataires SET lu_le = ? WHERE contribuable_id = ? AND lu_le IS NULL",
+  ).run(Date.now(), session.id);
+  revalidatePath("/contribuable");
 }

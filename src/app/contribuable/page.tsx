@@ -1,6 +1,7 @@
 import Link from "next/link";
 import db from "@/lib/db";
 import { exigerMairie } from "@/lib/auth";
+import { marquerMessagesLus } from "@/app/contribuable/actions";
 import { ajouterJours, aujourdhuiStr, bornesJour, dateStr, heureStr, montantFmt } from "@/lib/dates";
 
 export const metadata = { title: "Mon espace" };
@@ -37,6 +38,22 @@ export default async function PageContribuable() {
     )
     .all(session.id);
 
+  // Messages de la mairie adressés à CE contribuable (et lui seul) :
+  // les plus récents d'abord ; il les marque lus explicitement.
+  const messages = db
+    .prepare<
+      [number, number],
+      { id: number; contenu: string; cree_le: number; lu_le: number | null }
+    >(
+      `SELECT m.id, m.contenu, m.cree_le, d.lu_le
+       FROM messages m
+       JOIN messages_destinataires d ON d.message_id = m.id
+       WHERE d.contribuable_id = ? AND m.mairie_id = ?
+       ORDER BY m.cree_le DESC LIMIT 5`,
+    )
+    .all(session.id, session.mairieId ?? -1);
+  const nonLus = messages.filter((m) => m.lu_le === null).length;
+
   const cartes = [
     {
       libelle: "Payé ce mois-ci",
@@ -67,6 +84,54 @@ export default async function PageContribuable() {
           de démonstration instantané.
         </p>
       </section>
+
+      {/* Messages de la mairie */}
+      {messages.length > 0 && (
+        <section
+          className={`rounded-2xl p-5 ring-1 ${
+            nonLus > 0
+              ? "bg-emerald-50 ring-emerald-200"
+              : "bg-white ring-slate-200"
+          }`}
+        >
+          <h2 className="flex items-center gap-2 font-semibold text-slate-900">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5 text-emerald-700">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
+            </svg>
+            Messages de votre mairie
+            {nonLus > 0 && (
+              <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">
+                {nonLus} nouveau{nonLus > 1 ? "x" : ""}
+              </span>
+            )}
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {messages.map((m) => (
+              <li
+                key={m.id}
+                className={`rounded-xl px-4 py-3 text-sm ring-1 ${
+                  m.lu_le === null
+                    ? "bg-white font-medium text-slate-900 ring-emerald-300"
+                    : "bg-slate-50 text-slate-600 ring-slate-100"
+                }`}
+              >
+                <p className="whitespace-pre-wrap break-words">{m.contenu}</p>
+                <p className="mt-1 text-xs font-normal text-slate-400">
+                  {dateStr(m.cree_le)} à {heureStr(m.cree_le)}
+                  {m.lu_le === null ? "" : " · déjà lu"}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {nonLus > 0 && (
+            <form action={marquerMessagesLus} className="mt-3">
+              <button type="submit" className="btn-secondaire px-3 py-1.5 text-xs">
+                Marquer comme lu
+              </button>
+            </form>
+          )}
+        </section>
+      )}
 
       {/* Indicateurs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
