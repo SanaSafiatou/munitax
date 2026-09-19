@@ -1,27 +1,42 @@
-# Déploiement MuniTax sur Render (plan gratuit pour démarrer).
+# Déploiement MuniTax sur Render pour une campagne terrain (2 semaines) :
 #
-# Notes importantes :
-#   - Le plan gratuit s'endort après 15 minutes sans visite ; le premier
-#     visiteur attend environ une minute. Au réveil, la base vierge est
-#     automatiquement re-amorcée avec les comptes de démonstration.
-#   - Pour conserver les données réelles, passer l'instance en Starter
-#     ($7/mois) et attacher un disque persistant (+0,25 $/Go/mois).
+#   - plan Starter (7 $/mois) : indispensable pour le disque persistant qui
+#     conserve les données entre les redémarrages.
+#   - Les données réelles sont restaurées au PREMIER démarrage via la variable
+#     RESTAURER_DB_B64 (base64 gzip produite par `npm run sauvegarder`), à
+#     coller dans le tableau de bord Render — jamais dans ce dépôt public.
+#   - Ensuite tout est conservé sur le disque /var/lib/munitax.
+#
+# Installation du tableau de bord Render :
+#   New > Blueprint > dépôt munitax > il lit ce fichier. Renseigner
+#   RESTAURER_DB_B64 (onglet Environment) puis Deploy.
 services:
   - type: web
     name: munitax
     runtime: node
-    plan: free
+    plan: starter
     region: frankfurt
     branch: main
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run start
+    startCommand: npm run demarrer
     healthCheckPath: /login
     autoDeploy: true
+    disk:
+      name: munitax-data
+      mountPath: /var/lib/munitax
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22.23.2"
       - key: APP_TIMEZONE
         value: Africa/Douala
+      # La base réelle vit sur le disque persistant.
+      - key: APP_DB_PATH
+        value: /var/lib/munitax/app.db
+      # Instantané de production (base64 gzip) à renseigner dans le tableau
+      # de bord avant le premier déploiement ; vide = données de démo.
+      - key: RESTAURER_DB_B64
+        sync: false
       # Secret de signature des sessions, généré par Render.
       - key: SESSION_SECRET
         generateValue: true

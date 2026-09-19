@@ -43,6 +43,11 @@ next-env.d.ts
 # base de données locale
 /data
 
+# Instantané de migration vers Render : contient des données réelles, ne
+# doit jamais être committé sur le dépôt public.
+data/production.base64
+data/backups/
+
 # Tunnel et artefacts de construction Android
 .tunnel-url
 apk-builder/.travail/

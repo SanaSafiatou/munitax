@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "demarrer": "node scripts/demarrer.mjs",
+    "sauvegarder": "node scripts/sauvegarder.mjs",
     "lint": "eslint",
     "seed": "node scripts/seed.mjs"
   },

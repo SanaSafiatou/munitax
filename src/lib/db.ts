@@ -6,9 +6,10 @@ import {
   amorcerBaseNeuve,
 } from "../../scripts/demo-data.mjs";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-fs.mkdirSync(DATA_DIR, { recursive: true });
-const db = new Database(path.join(DATA_DIR, "app.db"));
+const DB_PATH =
+  process.env.APP_DB_PATH ?? path.join(process.cwd(), "data", "app.db");
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 // Plusieurs processus peuvent initialiser la base en même temps (workers
 // de build, redémarrages) : on attend notre tour plutôt que d'échouer.
