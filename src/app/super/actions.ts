@@ -34,6 +34,19 @@ export async function connexionSuper(
 
   const proprio = await verifierProprietaire(identifiant, motDePasse);
   if (!proprio) {
+    // Refus explicite des comptes de mairie (administrateurs/agents) : ils
+    // n'accèdent JAMAIS à l'espace propriétaire, quelle que soit leur valeur.
+    const compteMairie = db
+      .prepare<[string], { id: number }>(
+        "SELECT id FROM agents WHERE identifiant = ?",
+      )
+      .get(identifiant);
+    if (compteMairie) {
+      return {
+        erreur:
+          "Espace réservé au propriétaire de l'application. Les comptes de mairie n'y ont pas accès.",
+      };
+    }
     return { erreur: "Identifiant ou mot de passe incorrect." };
   }
 
@@ -252,6 +265,49 @@ export type EtatSuppressionAdmin = {
   erreur?: string;
   succes?: string;
 };
+
+/**
+ * Supprime DÉFINITIVEMENT une mairie et TOUTES ses données (agents,
+ * contribuables, types de taxes, paiements, clés mobile money, messages).
+ * Action irréversible : aucun archivage ni possibilité de récupération.
+ * Les sessions ouvertes de ses comptes sont invalidées automatiquement
+ * (le jeton est revérifié en base à chaque requête).
+ */
+export async function supprimerMairie(
+  _etatPrecedent: EtatActionMairie,
+  formData: FormData,
+): Promise<EtatActionMairie> {
+  await exigerRole("super_admin");
+  const mairieId = Number(formData.get("mairie_id"));
+
+  const mairie = db
+    .prepare<[number], { id: number; nom: string }>(
+      "SELECT id, nom FROM mairies WHERE id = ?",
+    )
+    .get(mairieId);
+  if (!mairie) {
+    return { erreur: "Mairie introuvable." };
+  }
+
+  db.transaction(() => {
+    // Ordre imposé par les contraintes de clés étrangères (foreign_keys = ON).
+    db.prepare("DELETE FROM paiements WHERE mairie_id = ?").run(mairieId);
+    db.prepare("DELETE FROM messages WHERE mairie_id = ?").run(mairieId);
+    db.prepare("DELETE FROM agents WHERE mairie_id = ?").run(mairieId);
+    db.prepare("DELETE FROM contribuables WHERE mairie_id = ?").run(mairieId);
+    db.prepare("DELETE FROM types_taxe WHERE mairie_id = ?").run(mairieId);
+    db.prepare("DELETE FROM mairies_moyens_paiement WHERE mairie_id = ?").run(
+      mairieId,
+    );
+    db.prepare("DELETE FROM mairies WHERE id = ?").run(mairieId);
+  })();
+
+  revalidatePath("/super");
+
+  return {
+    succes: `Mairie « ${mairie.nom} » supprimée définitivement avec toutes ses données (agents, contribuables, types de taxes, paiements, clés mobile money).`,
+  };
+}
 
 /**
  * Supprime DÉFINITIVEMENT le compte administrateur d'une mairie. Seuls les

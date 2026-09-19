@@ -6,11 +6,10 @@ import {
   creerAdminMairie,
   changerStatutMairie,
   seConnecterComme,
-  supprimerAdminMairie,
+  supprimerMairie,
   type EtatCreationMairie,
   type EtatCreationAdmin,
   type EtatActionMairie,
-  type EtatSuppressionAdmin,
 } from "@/app/super/actions";
 import { Spinner } from "@/components/formulaire-connexion";
 
@@ -177,11 +176,11 @@ export function FormulaireCreationAdmin({
 const clsBouton =
   "rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Boutons d'une ligne de mairie : approbation, suspension, impersonation. */
+/** Boutons d'une ligne de mairie : approbation, suspension, impersonation, suppression définitive. */
 export function ActionsMairie({
   mairie,
 }: {
-  mairie: { id: number; statut: string; adminId: number | null };
+  mairie: { id: number; statut: string; adminId: number | null; nom: string };
 }) {
   const [etatStatut, actionStatut, enCoursStatut] = useActionState<
     EtatActionMairie,
@@ -191,10 +190,10 @@ export function ActionsMairie({
     EtatActionMairie,
     FormData
   >(seConnecterComme, {});
-  const [etatSup, actionSup, enCoursSup] = useActionState<
-    EtatSuppressionAdmin,
+  const [etatSupMairie, actionSupMairie, enCoursSupMairie] = useActionState<
+    EtatActionMairie,
     FormData
-  >(supprimerAdminMairie, {});
+  >(supprimerMairie, {});
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -240,39 +239,37 @@ export function ActionsMairie({
             Se connecter
           </button>
         </form>
-        {mairie.adminId && (
-          <form
-            action={actionSup}
-            onSubmit={(e) => {
-              if (
-                !confirm(
-                  "Êtes-vous sûr ? Ce compte administrateur sera supprimé définitivement, sans possibilité de récupération.",
-                )
-              ) {
-                e.preventDefault();
-              }
-            }}
+        <form
+          action={actionSupMairie}
+          onSubmit={(e) => {
+            if (
+              !confirm(
+                `Supprimer DÉFINITIVEMENT la mairie « ${mairie.nom} » et TOUTES ses données (agents, contribuables, types de taxes, paiements, messages, clés mobile money) ? Cette action est irréversible.`,
+              )
+            ) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <input type="hidden" name="mairie_id" value={mairie.id} />
+          <button
+            type="submit"
+            disabled={enCoursSupMairie}
+            title="Supprimer définitivement cette mairie et toutes ses données (irréversible)"
+            className={`${clsBouton} bg-red-600 font-bold text-white shadow-sm hover:bg-red-500`}
           >
-            <input type="hidden" name="agent_id" value={mairie.adminId} />
-            <button
-              type="submit"
-              disabled={enCoursSup}
-              title="Supprimer définitivement ce compte administrateur"
-              className={`${clsBouton} bg-red-600 text-white hover:bg-red-500`}
-            >
-              Supprimer
-            </button>
-          </form>
-        )}
+            Supprimer la mairie
+          </button>
+        </form>
       </div>
-      {(etatStatut.erreur || etatImp.erreur || etatSup.erreur) && (
+      {(etatStatut.erreur || etatImp.erreur || etatSupMairie.erreur) && (
         <p role="alert" className="max-w-56 text-right text-xs text-red-600">
-          {etatStatut.erreur ?? etatImp.erreur ?? etatSup.erreur}
+          {etatStatut.erreur ?? etatImp.erreur ?? etatSupMairie.erreur}
         </p>
       )}
-      {(etatStatut.succes || etatSup.succes) && (
+      {(etatStatut.succes || etatSupMairie.succes) && (
         <p role="status" className="max-w-56 text-right text-xs text-emerald-700">
-          {etatStatut.succes ?? etatSup.succes}
+          {etatStatut.succes ?? etatSupMairie.succes}
         </p>
       )}
     </div>

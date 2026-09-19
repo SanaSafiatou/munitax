@@ -6,6 +6,12 @@ import { ajouterJours, aujourdhuiStr, bornesJour, dateStr, heureStr, montantFmt 
 
 export const metadata = { title: "Mon espace" };
 
+const DEGRES = [
+  "from-emerald-600 to-teal-500",
+  "from-sky-600 to-cyan-500",
+  "from-amber-500 to-orange-500",
+];
+
 export default async function PageContribuable() {
   const session = await exigerMairie("contribuable");
 
@@ -38,8 +44,6 @@ export default async function PageContribuable() {
     )
     .all(session.id);
 
-  // Messages de la mairie adressés à CE contribuable (et lui seul) :
-  // les plus récents d'abord ; il les marque lus explicitement.
   const messages = db
     .prepare<
       [number, number],
@@ -59,7 +63,6 @@ export default async function PageContribuable() {
       libelle: "Payé ce mois-ci",
       valeur: montantFmt(mois.total ?? 0),
       icone: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
-      accent: true,
     },
     {
       libelle: "Quittances ce mois",
@@ -75,26 +78,34 @@ export default async function PageContribuable() {
 
   return (
     <div className="space-y-6">
-      {/* Bandeau d'accueil */}
-      <section className="rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-700 p-6 text-white shadow-sm">
-        <p className="text-sm text-emerald-100">Bonjour,</p>
-        <h1 className="text-xl font-bold sm:text-2xl">{session.nom}</h1>
-        <p className="mt-1 max-w-lg text-sm text-emerald-100">
-          Consultez vos taxes et payez en ligne en toute autonomie — paiement
-          de démonstration instantané.
-        </p>
+      {/* Héros premium */}
+      <section className="hero-premium bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-700 p-6 sm:p-8">
+        <div className="hero-halo-gauche" />
+        <div className="hero-halo-droite" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            Bonjour,
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {session.nom}
+          </h1>
+          <p className="mt-2 max-w-lg text-sm text-emerald-100/90">
+            Consultez vos taxes et payez en ligne en toute autonomie — paiement
+            de démonstration instantané.
+          </p>
+        </div>
       </section>
 
       {/* Messages de la mairie */}
       {messages.length > 0 && (
         <section
-          className={`rounded-2xl p-5 ring-1 ${
+          className={`carte-premium overflow-hidden ${
             nonLus > 0
-              ? "bg-emerald-50 ring-emerald-200"
-              : "bg-white ring-slate-200"
+              ? "ring-emerald-200 shadow-[0_12px_32px_-16px_rgba(6,78,59,0.25)]"
+              : ""
           }`}
         >
-          <h2 className="flex items-center gap-2 font-semibold text-slate-900">
+          <h2 className="flex items-center gap-2 border-b border-slate-100 px-5 py-3 font-semibold text-slate-900">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5 text-emerald-700">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
             </svg>
@@ -105,13 +116,13 @@ export default async function PageContribuable() {
               </span>
             )}
           </h2>
-          <ul className="mt-3 space-y-3">
+          <ul className="space-y-3 p-5">
             {messages.map((m) => (
               <li
                 key={m.id}
                 className={`rounded-xl px-4 py-3 text-sm ring-1 ${
                   m.lu_le === null
-                    ? "bg-white font-medium text-slate-900 ring-emerald-300"
+                    ? "bg-gradient-to-r from-emerald-50 to-emerald-50/40 font-medium text-slate-900 ring-emerald-200"
                     : "bg-slate-50 text-slate-600 ring-slate-100"
                 }`}
               >
@@ -124,7 +135,7 @@ export default async function PageContribuable() {
             ))}
           </ul>
           {nonLus > 0 && (
-            <form action={marquerMessagesLus} className="mt-3">
+            <form action={marquerMessagesLus} className="border-t border-slate-100 px-5 py-3">
               <button type="submit" className="btn-secondaire px-3 py-1.5 text-xs">
                 Marquer comme lu
               </button>
@@ -133,18 +144,26 @@ export default async function PageContribuable() {
         </section>
       )}
 
-      {/* Indicateurs */}
+      {/* Indicateurs premium */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {cartes.map((c) => (
-          <div key={c.libelle} className="carte flex items-center gap-4 p-4">
-            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${c.accent ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-50 text-slate-500 ring-slate-200"}`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5.5 w-5.5">
+        {cartes.map((c, i) => (
+          <div
+            key={c.libelle}
+            className="group carte-premium relative overflow-hidden flex items-center gap-4 p-5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-16px_rgba(6,78,59,0.35)]"
+          >
+            <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br to-transparent opacity-70 transition group-hover:scale-125 ${i % 2 === 0 ? "from-emerald-100" : "from-sky-100"}`} />
+            <span className={`pastille-icone relative bg-gradient-to-br ${DEGRES[i % DEGRES.length]}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d={c.icone} />
               </svg>
             </span>
-            <span className="min-w-0">
-              <span className="block truncate text-xs text-slate-500">{c.libelle}</span>
-              <span className="block truncate text-lg font-bold text-slate-900">{c.valeur}</span>
+            <span className="relative min-w-0">
+              <span className="block truncate text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {c.libelle}
+              </span>
+              <span className="block truncate text-2xl font-extrabold tracking-tight text-slate-900">
+                {c.valeur}
+              </span>
             </span>
           </div>
         ))}
@@ -157,17 +176,26 @@ export default async function PageContribuable() {
           <span className="badge-demo">Paiement simulé</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          {types.map((t) => (
+          {types.map((t, i) => (
             <Link
               key={t.id}
               href={`/contribuable/payer/${t.id}`}
-              className="carte group flex items-center justify-between gap-3 p-4 transition hover:border-emerald-300 hover:ring-emerald-200"
+              className="group carte-premium flex items-center justify-between gap-3 p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-16px_rgba(6,78,59,0.35)]"
             >
-              <span className="min-w-0">
-                <span className="block font-semibold text-slate-900 group-hover:text-emerald-800">{t.nom}</span>
-                <span className="block truncate text-sm text-slate-500">
-                  {t.montant_libre ? "Montant libre" : montantFmt(t.montant_fixe ?? 0)}
-                  {t.description ? ` · ${t.description}` : ""}
+              <span className="flex min-w-0 items-center gap-3">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md ${DEGRES[i % DEGRES.length]}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+                  </svg>
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold text-slate-900 group-hover:text-emerald-800">
+                    {t.nom}
+                  </span>
+                  <span className="block truncate text-sm text-slate-500">
+                    {t.montant_libre ? "Montant libre" : montantFmt(t.montant_fixe ?? 0)}
+                    {t.description ? ` · ${t.description}` : ""}
+                  </span>
                 </span>
               </span>
               <span className="btn-primaire shrink-0 px-3 py-2">Payer</span>
@@ -195,10 +223,10 @@ export default async function PageContribuable() {
             ci-dessus pour essayer le parcours de démonstration.
           </p>
         ) : (
-          <ul className="carte divide-y divide-slate-100">
+          <ul className="carte-premium divide-y divide-slate-100 overflow-hidden">
             {derniers.map((p) => (
               <li key={p.id}>
-                <Link href={`/recu/${p.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+                <Link href={`/recu/${p.id}`} className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-emerald-50/40">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">{p.taxe_nom}</span>
                     <span className="block text-sm text-slate-500">
@@ -206,7 +234,7 @@ export default async function PageContribuable() {
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-3">
-                    <span className={`font-semibold ${p.statut === "valide" ? "text-slate-900" : "text-red-500 line-through"}`}>
+                    <span className={`font-bold tabular-nums ${p.statut === "valide" ? "text-emerald-700" : "text-red-500 line-through"}`}>
                       {montantFmt(p.montant)}
                     </span>
                     {p.statut === "valide" ? (

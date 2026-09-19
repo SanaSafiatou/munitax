@@ -92,4 +92,37 @@ body {
   .sous-titre-page {
     @apply mt-1 text-sm text-slate-500;
   }
+
+  /* ---------- Habillage « premium » des tableaux de bord ---------- */
+
+  /* Carte blanche raffinée : ombre douce + liseré discret */
+  .carte-premium {
+    @apply rounded-2xl bg-white ring-1 ring-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-16px_rgba(6,78,59,0.22)];
+  }
+
+  /* Bloc « héros » : bandeau dégradé avec halos décoratifs */
+  .hero-premium {
+    @apply relative overflow-hidden rounded-3xl text-white shadow-[0_24px_60px_-24px_rgba(6,78,59,0.55)];
+  }
+  .hero-halo-gauche {
+    @apply pointer-events-none absolute -left-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl;
+  }
+  .hero-halo-droite {
+    @apply pointer-events-none absolute -bottom-28 right-10 h-64 w-64 rounded-full bg-teal-300/20 blur-3xl;
+  }
+
+  /* Dégradé de texte d'accent */
+  .texte-degrade-emeraude {
+    @apply bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 bg-clip-text text-transparent;
+  }
+
+  /* Puce affichant une variation (▲/▼) */
+  .puce-tendance {
+    @apply inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1;
+  }
+
+  /* Pastille d'icône en dégradé */
+  .pastille-icone {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-md;
+  }
 }

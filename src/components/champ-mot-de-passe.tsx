@@ -13,6 +13,10 @@ export default function ChampMotDePasse({
   placeholder = "••••••••",
   className = "champ",
   requis = true,
+  inputMode,
+  maxLength,
+  pattern,
+  conseil,
 }: {
   id: string;
   /** Nom du champ envoyé au serveur (par défaut : identique à id). */
@@ -21,6 +25,11 @@ export default function ChampMotDePasse({
   placeholder?: string;
   className?: string;
   requis?: boolean;
+  inputMode?: "numeric" | "text" | "decimal" | "tel" | "email";
+  maxLength?: number;
+  pattern?: string;
+  /** Petit texte d'aide affiché sous le champ. */
+  conseil?: string;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -32,9 +41,15 @@ export default function ChampMotDePasse({
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
         required={requis}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        pattern={pattern}
         className={`${className} pr-11`}
         placeholder={placeholder}
       />
+      {conseil && (
+        <p className="mt-1 text-xs text-slate-400">{conseil}</p>
+      )}
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}

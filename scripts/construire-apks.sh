@@ -12,8 +12,8 @@
 set -euo pipefail
 
 URL_SITE="${URL_SITE:-${URL_TUNNEL:-https://munitax.onrender.com}}"
-VERSION_CODE="4"
-VERSION_NAME="1.3"
+VERSION_CODE="9"
+VERSION_NAME="1.8"
 
 if [[ ! "$URL_SITE" =~ ^https://[a-zA-Z0-9.-]+(/)?$ ]]; then
   echo "Erreur : URL_SITE invalide (ex : https://munitax.onrender.com)" >&2
@@ -44,7 +44,7 @@ if [[ ! -f "$KEYSTORE" ]]; then
 fi
 
 construire_apk() {
-  local nom_app="$1" paquet="$2" chemin="$3" fichier="$4"
+  local nom_app="$1" paquet="$2" chemin="$3" fichier="$4" couleur_debut="$5" couleur_fin="$6" glyphe="$7"
   local d="$TRAVAIL/$paquet"
   rm -rf "$d"; mkdir -p "$d"/{res/mipmap-anydpi-v26,res/drawable,res/values,gen,classes,dex}
 
@@ -70,26 +70,33 @@ construire_apk() {
 </manifest>
 EOF
 
-  cat > "$d/res/values/colors.xml" <<'EOF'
+  cat > "$d/res/values/colors.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
-<resources><color name="ic_bg">#065F46</color></resources>
+<resources><color name="ic_bg">$couleur_fin</color></resources>
 EOF
 
-  cat > "$d/res/drawable/ic_launcher_fg.xml" <<'EOF'
+  cat > "$d/res/drawable/ic_launcher_bg.xml" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+  <gradient android:type="linear" android:angle="135"
+      android:startColor="$couleur_debut" android:endColor="$couleur_fin"/>
+</shape>
+EOF
+
+  cat > "$d/res/drawable/ic_launcher_fg.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-  <path android:fillColor="#FFFFFF"
-      android:pathData="M32,78 L32,50 L42,44 L54,37 L66,44 L76,50 L76,78 Z M40,58 h5 v5 h-5 z M51.5,58 h5 v5 h-5 z M63,58 h5 v5 h-5 z"/>
-  <path android:fillColor="#065F46" android:pathData="M50,78 v-11 h8 v11 z"/>
+$glyphe
 </vector>
 EOF
 
   cat > "$d/res/mipmap-anydpi-v26/ic_launcher.xml" <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-  <background android:drawable="@color/ic_bg"/>
+  <background android:drawable="@drawable/ic_launcher_bg"/>
   <foreground android:drawable="@drawable/ic_launcher_fg"/>
 </adaptive-icon>
 EOF
@@ -125,6 +132,9 @@ public class MainActivity extends Activity {
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
         web.getSettings().setGeolocationEnabled(true);
+        // User-Agent non navigateur : évite la page d'avertissement intermédiaire
+        // de ngrok (lignes ngrok-skip-browser-warning) à la première visite.
+        web.getSettings().setUserAgentString("MuniTaxAndroid/" + "$VERSION_NAME (" + urlDepart() + ")");
         web.setWebViewClient(new WebViewClient() {
             // API >= 23 : callback appelé pour les échecs de chargement.
             // Sans lui, un hôte inaccessible laisse la WebView blanche.
@@ -230,7 +240,40 @@ EOF
   ) && echo "OK -> $SORTIE/$fichier"
 }
 
-construire_apk "MuniTax Agent"        "cf.munitax.agent"     "/login" "MuniTax-Agent.apk"
-construire_apk "MuniTax Contribuable" "cf.munitax.client"   "/"      "MuniTax-Contribuable.apk"
+HALO='
+  <path android:fillColor="#FFFFFF" android:fillAlpha="0.16"
+      android:pathData="M54,54 m-35,0 a35,35 0 1,1 70,0 a35,35 0 1,1 -70,0"/>
+  <path android:strokeColor="#33FFFFFF" android:strokeWidth="2" android:fillColor="#00000000"
+      android:pathData="M54,54 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/>'
+
+GLYPHE_AGENT="$HALO"'
+  <path android:fillColor="#FFFFFF"
+      android:pathData="M32,78 L32,50 L42,44 L54,37 L66,44 L76,50 L76,78 Z M40,58 h5 v5 h-5 z M51.5,58 h5 v5 h-5 z M63,58 h5 v5 h-5 z"/>
+  <path android:fillColor="#065F46" android:pathData="M50,78 v-11 h8 v11 z"/>'
+
+GLYPHE_CONTRIBUABLE="$HALO"'
+  <path android:fillColor="#FFFFFF" android:pathData="M54,26 a11,11 0 1,1 0,22 a11,11 0 1,1 0,-22 z"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M36,75 h36 a18,18 0 1,1 -36,0 z"/>
+  <path android:fillColor="#FBBF24" android:pathData="M54,81 m-6.5,0 a6.5,6.5 0 1,1 13,0 a6.5,6.5 0 1,1 -13,0"/>
+  <path android:fillColor="#FFFFFF" android:fillAlpha="0.35" android:pathData="M54,81 m-2.4,0 a2.4,3.4 90 1,0 0,0.1"/>'
+
+GLYPHE_ADMIN="$HALO"'
+  <path android:fillColor="#FFFFFF" android:pathData="M34,50 L54,32 L74,50 Z"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M30,50 h48 v8 h-48 Z"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M41,60 v24 h5 v-24 Z M51.5,60 v24 h5 v-24 Z M62,60 v24 h5 v-24 Z"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M37,84 h34 v4 h-34 Z M33,88 h42 v4 h-42 Z"/>
+  <path android:fillColor="#FBBF24" android:pathData="M32,42 m-1.6,0 a1.6,1.6 0 1,1 3.2,0 a1.6,1.6 0 1,1 -3.2,0"/>'
+
+GLYPHE_SUPERADMIN="$HALO"'
+  <path android:fillColor="#FFFFFF" android:pathData="M32,60 L36,36 L54,51 L72,36 L76,60 Z"/>
+  <path android:fillColor="#FFFFFF" android:pathData="M32,60 h44 v12 h-44 z"/>
+  <path android:fillColor="#FBBF24" android:pathData="M54,60 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0"/>
+  <path android:fillColor="#FBBF24" android:pathData="M40.5,51.5 m-2.1,0 a2.1,2.1 0 1,1 4.2,0 a2.1,2.1 0 1,1 -4.2,0"/>
+  <path android:fillColor="#FBBF24" android:pathData="M67.5,51.5 m-2.1,0 a2.1,2.1 0 1,1 4.2,0 a2.1,2.1 0 1,1 -4.2,0"/>'
+
+construire_apk "MuniTax Agent"        "cf.munitax.agent"      "/login"      "MuniTax-Agent.apk"        "#34D399" "#065F46" "$GLYPHE_AGENT"
+construire_apk "MuniTax Contribuable" "cf.munitax.client"     "/"           "MuniTax-Contribuable.apk" "#38BDF8" "#0369A1" "$GLYPHE_CONTRIBUABLE"
+construire_apk "MuniTax Super Admin"  "cf.munitax.superadmin" "/super/login" "MuniTax-SuperAdmin.apk"  "#A78BFA" "#5B21B6" "$GLYPHE_SUPERADMIN"
+construire_apk "MuniTax Admin"        "cf.munitax.admin"      "/admin"      "MuniTax-Admin.apk"        "#818CF8" "#3730A3" "$GLYPHE_ADMIN"
 
 echo "Terminé. APK dans $SORTIE"

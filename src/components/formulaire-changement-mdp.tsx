@@ -16,24 +16,34 @@ export default function FormulaireChangementMdp() {
 
   return (
     <form action={action} className="space-y-4">
+      <p className="text-sm text-slate-500">
+        Choisissez un code à 4 chiffres, connu de vous seul.
+      </p>
       <div>
         <label htmlFor="nouveau" className="etiquette">
-          Nouveau mot de passe (6 caractères minimum)
+          Nouveau code (4 chiffres)
         </label>
         <ChampMotDePasse
           id="nouveau"
           autoComplete="new-password"
-          placeholder="6 caractères minimum"
+          placeholder="4 chiffres"
+          inputMode="numeric"
+          maxLength={4}
+          pattern="[0-9]{4}"
+          conseil="Uniquement des chiffres, entre 0000 et 9999."
         />
       </div>
       <div>
         <label htmlFor="confirmation" className="etiquette">
-          Confirmer le nouveau mot de passe
+          Confirmer le nouveau code
         </label>
         <ChampMotDePasse
           id="confirmation"
           autoComplete="new-password"
-          placeholder="Répétez le mot de passe"
+          placeholder="Répétez le code"
+          inputMode="numeric"
+          maxLength={4}
+          pattern="[0-9]{4}"
         />
       </div>
       {etat.erreur && (
@@ -47,7 +57,7 @@ export default function FormulaireChangementMdp() {
             <Spinner /> Enregistrement…
           </>
         ) : (
-          "Enregistrer mon nouveau mot de passe"
+          "Enregistrer mon nouveau code"
         )}
       </button>
     </form>

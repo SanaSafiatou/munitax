@@ -18,7 +18,11 @@ if (!fs.existsSync(src)) {
 
 const dossierBackups = path.join(process.cwd(), "data", "backups");
 fs.mkdirSync(dossierBackups, { recursive: true });
-const copie = path.join(dossierBackups, `app-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}.db`);
+const copie = path.join(
+  dossierBackups,
+  `app-${new Date().toISOString().slice(0, 19).replaceAll(/[T:-]/g, "")}.db`,
+);
+fs.rmSync(copie, { force: true }); // VACUUM INTO exige un fichier inexistant
 
 const db = new Database(src, { readonly: true });
 db.pragma("busy_timeout = 15000");

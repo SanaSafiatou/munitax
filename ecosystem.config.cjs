@@ -13,8 +13,8 @@ module.exports = {
     },
     {
       name: "munitax-tunnel",
-      script: "/home/ange-eudes/.local/bin/cloudflared",
-      args: "tunnel --url http://localhost:3100 --logfile /tmp/opencode/munitax-tunnel.log --loglevel info",
+      script: "/home/ange-eudes/.local/bin/ngrok",
+      args: "start munitax",
       autorestart: true,
     },
     {

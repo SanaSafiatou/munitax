@@ -7,7 +7,7 @@
 #   5. Deux mairies, un paiement chacune → isolation stricte des dashboards.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-BASE="https://table-rabbit-infants-need.trycloudflare.com"
+BASE="https://taco-oaf-graduate.ngrok-free.dev"
 echo "Cible : $BASE"
 npm run seed --silent >/dev/null 2>&1 && echo "base de démonstration réinitialisée"
 
@@ -16,7 +16,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 
-const BASE = process.env.BASE ?? "https://table-rabbit-infants-need.trycloudflare.com";
+const BASE = process.env.BASE ?? "https://taco-oaf-graduate.ngrok-free.dev";
 let PASS = 0, FAIL = 0;
 const ok = (m) => { PASS++; console.log("  ✓ " + m); };
 const ko = (m) => { FAIL++; console.log("  ✗ " + m); };

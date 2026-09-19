@@ -136,8 +136,10 @@ export async function changerMotDePasseInitial(
   const nouveau = String(formData.get("nouveau") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
 
-  if (nouveau.length < 6) {
-    return { erreur: "Le mot de passe doit contenir au moins 6 caractères." };
+  if (!/^\d{4}$/.test(nouveau)) {
+    return {
+      erreur: "Le code doit être un code à 4 chiffres (exemple : 4823).",
+    };
   }
   if (nouveau !== confirmation) {
     return { erreur: "Les deux mots de passe ne correspondent pas." };

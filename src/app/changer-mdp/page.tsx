@@ -4,7 +4,7 @@ import { accueilPourRole, exigerRole } from "@/lib/auth";
 import FormulaireChangementMdp from "@/components/formulaire-changement-mdp";
 import LogoMarque from "@/components/logo-marque";
 
-export const metadata = { title: "Nouveau mot de passe" };
+export const metadata = { title: "Nouveau code" };
 
 export default async function PageChangerMdp() {
   const session = await exigerRole("agent", "admin");
@@ -26,10 +26,10 @@ export default async function PageChangerMdp() {
       </div>
       <div className="carte p-6 sm:p-8">
         <h1 className="text-lg font-bold text-slate-900">
-          Personnalisez votre mot de passe
+          Personnalisez votre code
         </h1>
         <p className="sous-titre-page mb-5">
-          Vous vous êtes connecté avec un mot de passe temporaire fourni par
+          Vous vous êtes connecté avec un code provisoire fourni par
           l&apos;administration. Choisissez-en un nouveau, connu de vous seul :
           après cet enregistrement, plus personne ne pourra le consulter.
         </p>
